@@ -18,6 +18,7 @@ else
     fi
 fi
 
+# Install network manager
 echo "📦 Installing dependencies..."
 sudo apt update
 sudo apt install -y network-manager
@@ -43,6 +44,35 @@ EOT
 
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
+
+# Install Flask web interface
+
+echo "📦 Installing Flask web interface..."
+
+sudo mkdir -p /opt/WebApp
+sudo cp -r WebApp/* /opt/WebApp/
+sudo chmod +x /opt/WebApp/app.py
+
+echo "🛠 Installing config-web systemd service..."
+sudo tee /etc/systemd/system/config-web.service > /dev/null <<EOT
+[Unit]
+Description=CompanionPi Web Interface
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/WebApp/app.py
+WorkingDirectory=/opt/WebApp
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOT
+
+sudo systemctl daemon-reload
+sudo systemctl enable config-web
+
+sudo systemctl restart config-web
+
 
 echo ""
 echo "✅ Installation complete."
