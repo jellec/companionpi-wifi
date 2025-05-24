@@ -32,7 +32,7 @@ EOT
         echo "✏️ Please edit settings.env manually before rerunning this script."
         cat settings.env
     fi
-    exit 0
+    echo "✅ Continuing installation with your updated settings..."
 fi
 
 source settings.env
