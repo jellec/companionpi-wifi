@@ -66,7 +66,7 @@ WantedBy=multi-user.target
 EOT
 
 echo "🔧 Starting CompanionPi NetworkManager-based setup..."
-sudo cp netconfig_dynamic.sh /usr/local/bin/netconfig.sh
+sudo cp netconfig.sh /usr/local/bin/netconfig.sh
 sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
 sudo cp check.sh /usr/local/bin/check.sh
 sudo chmod +x /usr/local/bin/*.sh
