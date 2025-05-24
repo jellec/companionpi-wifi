@@ -4,6 +4,7 @@ cd "$(dirname "$0")"
 
 echo "🔧 Starting CompanionPi setup..."
 
+# 1. Create or ask to update settings.env
 if [ ! -f settings.env ]; then
     echo "⚙️  Creating default settings.env..."
     cat <<EOT > settings.env
@@ -22,24 +23,26 @@ ETH0_SUBNET=255.255.255.0
 # DHCP timeout for eth0
 ETH0_TIMEOUT=30
 EOT
-
     echo "✅ Created settings.env with default values."
-    if command -v nano >/dev/null 2>&1; then
-        echo "📝 Opening settings.env in nano..."
-        sleep 1
+    nano settings.env
+else
+    echo "📝 settings.env already exists."
+    read -p "🔄 Do you want to edit it now? [y/N] " answer
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
         nano settings.env
-    else
-        echo "✏️ Please edit settings.env manually before rerunning this script."
-        cat settings.env
     fi
-    echo "✅ Continuing installation with your updated settings..."
 fi
 
 source settings.env
 
+# 2. Unmask hostapd (in case it's masked)
+sudo systemctl unmask hostapd
+
+# 3. Install packages
 sudo apt update
 sudo apt install -y hostapd dnsmasq python3-flask
 
+# 4. Generate configs from templates
 envsubst < hostapd.conf.template > hostapd.conf
 sudo cp hostapd.conf /etc/hostapd/hostapd.conf
 echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' | sudo tee /etc/default/hostapd
@@ -47,10 +50,7 @@ echo 'DAEMON_CONF="/etc/hostapd/hostapd.conf"' | sudo tee /etc/default/hostapd
 envsubst < dnsmasq.conf.template > dnsmasq.conf
 sudo cp dnsmasq.conf /etc/dnsmasq.conf
 
-sudo cp check_eth0_dhcp.py /usr/local/bin/check_eth0_dhcp.py
-sudo cp app.py /opt/config-web.py
-sudo chmod +x /usr/local/bin/check_eth0_dhcp.py
-
+# 5. Static IP for wlan0
 sudo tee -a /etc/dhcpcd.conf > /dev/null <<EOT
 
 interface wlan0
@@ -58,8 +58,16 @@ interface wlan0
     nohook wpa_supplicant
 EOT
 
+# 6. Scripts en services
+sudo cp check_eth0_dhcp.py /usr/local/bin/check_eth0_dhcp.py
+sudo cp app.py /opt/config-web.py
+sudo chmod +x /usr/local/bin/check_eth0_dhcp.py
+
 sudo cp eth0-fallback.service /etc/systemd/system/
 sudo cp config-web.service /etc/systemd/system/
+
+# 7. Enable services
+sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 sudo systemctl enable hostapd
 sudo systemctl enable dnsmasq
