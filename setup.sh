@@ -4,13 +4,12 @@ set -e
 echo "📥 Downloading CompanionPi-wifi installer..."
 
 # Download ZIP van repo
-wget -q https://github.com/jellec/companionpi-wifi/archive/refs/heads/main.zip -O companionpi-wifi.zip
+wget -q https://github.com/jellec/companionpi-wifi/archive/refs/heads/main.zip -O companionpiwifi.zip
 
 # Uitpakken
-unzip -q companionpi-wifi.zip
+unzip -q companionpiwifi.zip
 cd companionpi-wifi-main
-rm companionpi-wifi.zip
-
+rm companionpiwifi.zip
 
 # Installatie starten
 chmod +x install.sh
