@@ -1,27 +1,60 @@
 #!/bin/bash
 set -e
 
-echo "=== CompanionPi Network Status ==="
+echo "=== CompanionPi System Check ==="
 
-# ETH0
-echo
-echo "[ETH0]"
-nmcli device show eth0 | grep -E 'GENERAL.STATE|IP4.ADDRESS\[|IP4.GATEWAY' || echo "eth0 not connected"
+echo ""
+echo "[Systemd Services]"
+for svc in netconfig config-web dnsmasq; do
+  if systemctl list-units --type=service | grep -q "$svc"; then
+    systemctl is-active "$svc" && echo "$svc: active" || echo "$svc: inactive or failed"
+  else
+    echo "$svc: not installed"
+  fi
+done
 
-# WLAN0
-echo
-echo "[WLAN0]"
-nmcli device show wlan0 | grep -E 'GENERAL.STATE|IP4.ADDRESS\[|IP4.GATEWAY|WI-FI.SSID' || echo "wlan0 not connected"
+echo ""
+echo "[Interfaces & IP Addresses]"
+for iface in $(ls /sys/class/net | grep -E '^eth|^wlan'); do
+  ip=$(ip -4 addr show "$iface" | grep -oP '(?<=inet\s)\d+(\.\d+){3}' || true)
+  state=$(cat "/sys/class/net/$iface/operstate")
+  echo "$iface: $ip ($state)"
+done
 
-# Active connections
-echo
-echo "[Active connections]"
-nmcli connection show --active
+echo ""
+echo "[Active nmcli Connections]"
+nmcli -t -f NAME,DEVICE,STATE connection show --active || echo "No active connections."
 
-# IP addresses
-echo
-echo "[IP Addresses]"
-nmcli -f DEVICE,STATE,IP4.ADDRESS dev show | grep -v "::" || echo "No IPv4 addresses assigned"
+echo ""
+echo "[Configured Connections Check]"
+for iface in $(ls /sys/class/net | grep -E '^eth|^wlan'); do
+  for mode in auto fix ap; do
+    name="${iface}-${mode}"
+    if nmcli connection show "$name" &>/dev/null; then
+      echo "$name: OK"
+    else
+      echo "$name: MISSING"
+    fi
+  done
+done
 
-echo
-echo "Check complete."
+echo ""
+echo "[WiFi SSID]"
+nmcli -t -f DEVICE,STATE,CONNECTION dev status | grep wlan || echo "No wlan interface connected."
+
+echo ""
+echo "[dnsmasq status]"
+if pgrep dnsmasq >/dev/null; then
+  echo "dnsmasq: running"
+  echo "Configured interfaces in /etc/dnsmasq.d:"
+  grep -h 'interface=' /etc/dnsmasq.d/*.conf 2>/dev/null || echo "No interface entries found"
+else
+  echo "dnsmasq: not running"
+fi
+
+echo ""
+echo "[Open TCP Ports (DNS 53, DHCP 67, Flask 8001)]"
+ss -tuln | grep -E ':53|:67|:8001' || echo "No relevant ports are open."
+
+echo ""
+echo "=== Check complete ==="

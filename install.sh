@@ -2,8 +2,6 @@
 set -e
 cd "$(dirname "$0")"
 
-echo "🔧 Starting CompanionPi NetworkManager-based setup..."
-
 # Create settings.env if not exists
 if [ ! -f settings.env ]; then
     echo "⚙️  Copying default settings.env..."
@@ -22,15 +20,10 @@ fi
 echo "📦 Installing dependencies..."
 sudo apt update
 sudo apt install -y network-manager
-sudo apt install python3-flask
+sudo apt install -y python3-flask
 sudo apt install dnsmasq
 
 echo "🛠 Installing netconfig.sh to /usr/local/bin"
-sudo cp netconfig.sh /usr/local/bin/netconfig.sh
-sudo chmod +x /usr/local/bin/netconfig.sh
-
-sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
-sudo chmod +x /usr/local/bin/generate-dnsmasq.sh
 
 echo "🛠 Creating systemd service for netconfig"
 sudo tee /etc/systemd/system/netconfig.service > /dev/null <<EOT
@@ -71,6 +64,12 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 EOT
+
+echo "🔧 Starting CompanionPi NetworkManager-based setup..."
+sudo cp netconfig_dynamic.sh /usr/local/bin/netconfig.sh
+sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
+sudo cp check.sh /usr/local/bin/check.sh
+sudo chmod +x /usr/local/bin/*.sh
 
 sudo systemctl daemon-reload
 sudo systemctl enable config-web
