@@ -86,4 +86,13 @@ sudo systemctl enable dnsmasq
 sudo systemctl enable eth0-fallback
 sudo systemctl enable config-web
 
-echo "✅ Setup complete. You may now reboot the device."
+echo "✅ Setup complete."
+
+# Run system check
+if [ -f check.sh ]; then
+    echo "🔎 Running system check..."
+    chmod +x check.sh
+    ./check.sh
+else
+    echo "ℹ️ check.sh not found. Skipping post-install check."
+fi
