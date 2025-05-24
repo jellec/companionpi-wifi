@@ -12,7 +12,7 @@ This script configures a Raspberry Pi as a CompanionPi access point with network
 Run this one-liner on a new Raspberry Pi:
 
 ```bash
-bash <(curl -s https://raw.githubusercontent.com/YOUR_USERNAME/companionpi-wifi/main/install.sh)
+bash <(curl -s https://raw.githubusercontent.com/jellec/companionpi-wifi/main/install.sh)
 ```
 
 Make sure you have internet access via Ethernet when running this.
