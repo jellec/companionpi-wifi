@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raspberry Pi Network Settings</title>
+
+    <style>
+        table {
+            width: 70%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        .name-column {
+            width: 50%;
+        }
+        .type-column {
+            width: 20%;
+        }
+    </style>
+
+</head>
+<body>
+    <h1>Raspberry Pi Network Settings</h1>
+
+    <h3>The built-in ethernet will search for a DHCP server to obtain an IP-address. If no DHCP server is found after 30 seconds, a fixed IP-address will be used.</h3>
+    
+    <h2>Ethernet current IP </h2>
+    <p>This shows the current IP setting: eth0-auto (DHCP server detected) or eth0-fix (after 30sec timeout)</p>
+    <pre>{{ eth0_settings }}</pre>
+
+    <br>
+    <h2>Ethernet eth0-fix settings:</h2>
+    <p>Here you can change the fixed IP settings for eth0-fix.
+    <br>Use slash notation for subnet prefix. ( e.g. /24 for 255.255.255.0 or /16 for 255.255.0.0. )
+    </p>
+
+    <p>Current fixed IP setting is:</p>
+
+    <pre>{{ eth0_fix_settings }}</pre>
+
+        <h2>Change eth0 IP Address:</h2>
+    <form action="/change_eth0_ip" method="post">
+        <label for="new_ip">New IP Address:</label>
+        <input type="text" id="new_ip" name="new_ip" value="{{ eth0_fix_ip }}" required><br><br>
+        <button type="submit">Change eth0 fixed IP</button>
+        <br>
+    </form>
+
+    <br>
+    <hr>
+
+    <h2>WiFi AP Settings: --> NOT WORKING YET - WORK IN PROGRES</h2>
+    <pre>{{ wifi_ap_settings }}</pre>
+
+    <form action="/change_wifi_ap_settings" method="post">
+        <label for="new_ssid">New SSID:</label>
+        <input type="text" id="new_ssid" name="new_ssid" value="{{ wifi_ap_settings_ssid }}" required><br><br>
+
+        <label for="new_wpa_passphrase">New WPA Passphrase:</label>
+        <input type="password" id="new_wpa_passphrase" name="new_wpa_passphrase" value="{{ wifi_ap_settings_pass }}" required><br><br>
+
+
+        <label for="new_wifi_ip">New IP address</label>
+        <input type="text" id="new_wifi_ip" name="new_wifi_ip" value="{{ wifi_ap_settings_ip }}" required><br><br>
+
+        <label for="new_dhcp_start">New DHCP Start:</label>
+        <input type="text" id="new_dhcp_start" name="new_dhcp_start" value="{{ wifi_ap_dhcp_start }}" required><br><br>
+        
+        <label for="new_dhcp_end">New DHCP End:</label>
+        <input type="text" id="new_dhcp_end" name="new_dhcp_end" value="{{ wifi_ap_dhcp_end }}" required><br><br>
+        
+        <button type="submit">Update WiFi AP Settings</button>
+    </form>
+
+    <br>
+    <hr>
+
+    <h2>Development modules</h2>
+    <h3>Contents of {{ path }}</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.type }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br><br>
+    <form action="{{ url_for('restart_companion') }}" method="post">
+        <button type="submit">Restart Companion Service</button>
+    </form>
+
+    <br>
+    <hr>
+    <hr>
+</body>
+</html>

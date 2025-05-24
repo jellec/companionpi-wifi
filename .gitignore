@@ -3,3 +3,5 @@ settings.env
 hostapd.conf
 dnsmasq.conf
 bootstrap.sh
+.not
+settings.env
