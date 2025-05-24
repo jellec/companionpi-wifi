@@ -1,0 +1,2 @@
+interface=wlan0
+dhcp-range=${WIFI_DHCP_START},${WIFI_DHCP_END},${WIFI_SUBNET},24h
