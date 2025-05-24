@@ -22,6 +22,7 @@ fi
 echo "📦 Installing dependencies..."
 sudo apt update
 sudo apt install -y network-manager
+sudo apt install python3-flask
 
 echo "🛠 Installing netconfig.sh to /usr/local/bin"
 sudo cp netconfig.sh /usr/local/bin/netconfig.sh
@@ -49,7 +50,7 @@ sudo systemctl enable netconfig
 echo "📦 Installing Flask web interface..."
 
 sudo mkdir -p /opt/WebApp
-sudo cp WebApp/config-web.py /opt/WebApp/config-web.py
+sudo cp -r WebApp /opt/
 sudo chmod +x /opt/WebApp/config-web.py
 
 echo "🛠 Installing config-web systemd service..."
