@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🔧 Starting CompanionPi setup..."
+echo "🔧 Starting CompanionPi WiFi setup..."
 
 # 1. Install required packages
 sudo apt update
@@ -20,7 +20,7 @@ echo "📡 Setting static IP for wlan0..."
 sudo tee -a /etc/dhcpcd.conf > /dev/null <<EOT
 
 interface wlan0
-    static ip_address=192.168.50.1/24
+    static ip_address=192.168.45.1/24
     nohook wpa_supplicant
 EOT
 
