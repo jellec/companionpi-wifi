@@ -1,24 +1,27 @@
 #!/bin/bash
 set -e
 
-echo "🔍 Running system checks for CompanionPi..."
+echo "=== CompanionPi Network Status ==="
 
-echo -n "📡 Checking hostapd... "
-systemctl is-active --quiet hostapd && echo "✅ running" || echo "❌ not running"
+# ETH0
+echo
+echo "[ETH0]"
+nmcli device show eth0 | grep -E 'GENERAL.STATE|IP4.ADDRESS\[|IP4.GATEWAY' || echo "eth0 not connected"
 
-echo -n "📦 Checking dnsmasq... "
-systemctl is-active --quiet dnsmasq && echo "✅ running" || echo "❌ not running"
+# WLAN0
+echo
+echo "[WLAN0]"
+nmcli device show wlan0 | grep -E 'GENERAL.STATE|IP4.ADDRESS\[|IP4.GATEWAY|WI-FI.SSID' || echo "wlan0 not connected"
 
-echo -n "🧷 Checking eth0 fallback... "
-systemctl is-enabled --quiet eth0-fallback && echo "✅ enabled" || echo "❌ not enabled"
+# Active connections
+echo
+echo "[Active connections]"
+nmcli connection show --active
 
-echo -n "🌐 Checking Flask service (config-web)... "
-systemctl is-active --quiet config-web && echo "✅ running" || echo "❌ not running"
+# IP addresses
+echo
+echo "[IP Addresses]"
+nmcli -f DEVICE,STATE,IP4.ADDRESS dev show | grep -v "::" || echo "No IPv4 addresses assigned"
 
-echo -n "📶 wlan0 IP: "
-ip -4 addr show wlan0 | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' || echo "❌ not assigned"
-
-echo -n "🔌 eth0 IP: "
-ip -4 addr show eth0 | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}' || echo "❌ not assigned"
-
-echo "✅ Done."
+echo
+echo "Check complete."

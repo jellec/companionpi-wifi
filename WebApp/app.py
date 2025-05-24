@@ -8,7 +8,7 @@ def index():
     eth0_ip = subprocess.getoutput("ip -4 addr show eth0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'")
     wlan0_ip = subprocess.getoutput("ip -4 addr show wlan0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}'")
     return render_template_string("""
-        <h1>Network Configuration</h1>
+        <h1>Network Configuration - TEST JELLE</h1>
         <p>eth0 IP: {{ eth0 }}</p>
         <p>wlan0 IP: {{ wlan }}</p>
         <form method="POST" action="/config">
