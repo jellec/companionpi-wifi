@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
-source "/etc/companionpi/settings.env"
+
+SETTINGS_FILE="/etc/companionpi/settings.env"
+source "$SETTINGS_FILE"
 
 log() {
   echo "[netconfig] $1"
@@ -100,8 +102,8 @@ configure_wlan_interface() {
 
 log "Starting full network config..."
 
-eth_ifaces=$(grep -oP '^ETH\d+_TIMEOUT' "$SCRIPT_DIR/settings.env" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]' | sort -u)
-wlan_ifaces=$(grep -oP '^WLAN\d+_MODE' "$SCRIPT_DIR/settings.env" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]' | sort -u)
+eth_ifaces=$(grep -oP '^ETH\d+_TIMEOUT' "$SETTINGS_FILE" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]' | sort -u)
+wlan_ifaces=$(grep -oP '^WLAN\d+_MODE' "$SETTINGS_FILE" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]' | sort -u)
 
 for iface in $eth_ifaces; do
   configure_eth_interface "$iface"
