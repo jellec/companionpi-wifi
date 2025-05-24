@@ -46,12 +46,11 @@ sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 
 # Install Flask web interface
-
 echo "📦 Installing Flask web interface..."
 
 sudo mkdir -p /opt/WebApp
-sudo cp -r WebApp/* /opt/WebApp/
-sudo chmod +x /opt/WebApp/app.py
+sudo cp WebApp/config-web.py /opt/WebApp/config-web.py
+sudo chmod +x /opt/WebApp/config-web.py
 
 echo "🛠 Installing config-web systemd service..."
 sudo tee /etc/systemd/system/config-web.service > /dev/null <<EOT
@@ -60,7 +59,7 @@ Description=CompanionPi Web Interface
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /opt/WebApp/app.py
+ExecStart=/usr/bin/python3 /opt/WebApp/config-web.py
 WorkingDirectory=/opt/WebApp
 Restart=always
 
@@ -71,10 +70,8 @@ EOT
 sudo systemctl daemon-reload
 sudo systemctl enable config-web
 
-sudo systemctl restart config-web
-
 
 echo ""
 echo "✅ Installation complete."
-echo "🔁 Please reboot your Raspberry Pi to apply the network configuration:"
+echo "🔁 Please reboot your Raspberry Pi to apply the network configuration, use the following command:"
 echo "    sudo reboot"
