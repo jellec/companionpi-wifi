@@ -1,0 +1,11 @@
+[Unit]
+Description=Flask web interface for configuration
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/config-web.py
+WorkingDirectory=/opt/
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

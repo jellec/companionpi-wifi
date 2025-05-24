@@ -1,0 +1,10 @@
+[Unit]
+Description=Assign fallback IP to eth0 if DHCP fails
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/check_eth0_dhcp.py
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
