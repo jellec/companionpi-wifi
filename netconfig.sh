@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "$SCRIPT_DIR/settings.env"
+source "/etc/companionpi/settings.env"
 
 log() {
   echo "[netconfig] $1"

@@ -74,6 +74,9 @@ sudo chmod +x /usr/local/bin/*.sh
 sudo systemctl daemon-reload
 sudo systemctl enable config-web
 
+echo "📂 Copying settings.env to system location..."
+sudo mkdir -p /etc/companionpi
+sudo cp settings.env /etc/companionpi/settings.env
 
 echo ""
 echo "✅ Installation complete."
