@@ -21,7 +21,7 @@ echo "📦 Installing dependencies..."
 sudo apt update
 sudo apt install -y network-manager
 sudo apt install -y python3-flask
-sudo apt install dnsmasq
+sudo apt install -y dnsmasq
 
 echo "🛠 Installing netconfig.sh to /usr/local/bin"
 

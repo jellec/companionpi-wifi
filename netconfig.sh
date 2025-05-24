@@ -16,31 +16,45 @@ check_ip() {
 configure_eth_interface() {
   IFACE=$1
   PREFIX=${IFACE^^}
+  MODE_VAR="${PREFIX}_MODE"
   TIMEOUT_VAR="${PREFIX}_TIMEOUT"
   FALLBACK_VAR="${PREFIX}_FALLBACK_IP"
   AUTO_CONN="${IFACE}-auto"
   FIX_CONN="${IFACE}-fix"
 
+  MODE=${!MODE_VAR:-auto}         # Default to 'auto' if not defined
   TIMEOUT=${!TIMEOUT_VAR}
   FALLBACK_IP=${!FALLBACK_VAR}
 
-  log "Setting up $IFACE with fallback to static IP if no DHCP..."
+  log "Setting up $IFACE in mode: $MODE"
 
+  # Verwijder bestaande verbindingen met dezelfde naam om conflicten te vermijden
   nmcli connection delete "$AUTO_CONN" &>/dev/null || true
   nmcli connection delete "$FIX_CONN" &>/dev/null || true
 
+  # Maak beide profielen aan
   nmcli connection add type ethernet ifname "$IFACE" con-name "$AUTO_CONN" ipv4.method auto
   nmcli connection add type ethernet ifname "$IFACE" con-name "$FIX_CONN" ipv4.method manual ipv4.addresses "$FALLBACK_IP"
 
-  nmcli connection up "$AUTO_CONN"
-  sleep "$TIMEOUT"
-
-  if check_ip "$IFACE"; then
-    IP=$(ip -4 addr show "$IFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
-    log "$IFACE got DHCP IP: $IP"
-  else
-    log "No DHCP on $IFACE, switching to fallback: $FALLBACK_IP"
+  if [[ "$MODE" == "fix" ]]; then
+    log "$IFACE: fix mode selected – applying static IP directly"
     nmcli connection up "$FIX_CONN"
+
+  elif [[ "$MODE" == "auto" ]]; then
+    log "$IFACE: trying DHCP..."
+    nmcli connection up "$AUTO_CONN"
+    sleep "$TIMEOUT"
+
+    if check_ip "$IFACE"; then
+      IP=$(ip -4 addr show "$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
+      log "$IFACE got DHCP IP: $IP"
+    else
+      log "$IFACE: no DHCP response after $TIMEOUT sec – falling back to static IP"
+      nmcli connection up "$FIX_CONN"
+    fi
+
+  else
+    log "$IFACE: unknown mode '$MODE' – skipping"
   fi
 }
 
@@ -106,11 +120,23 @@ eth_ifaces=$(grep -oP '^ETH\d+_TIMEOUT' "$SETTINGS_FILE" | cut -d_ -f1 | tr '[:u
 wlan_ifaces=$(grep -oP '^WLAN\d+_MODE' "$SETTINGS_FILE" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]' | sort -u)
 
 for iface in $eth_ifaces; do
-  configure_eth_interface "$iface"
+  PREFIX=${iface^^}
+  ENABLED_VAR="${PREFIX}_ENABLED"
+  if [[ "${!ENABLED_VAR}" == "true" ]]; then
+    configure_eth_interface "$iface"
+  else
+    log "$iface is disabled via $ENABLED_VAR"
+  fi
 done
 
 for iface in $wlan_ifaces; do
-  configure_wlan_interface "$iface"
+  PREFIX=${iface^^}
+  ENABLED_VAR="${PREFIX}_ENABLED"
+  if [[ "${!ENABLED_VAR}" == "true" ]]; then
+    configure_wlan_interface "$iface"
+  else
+    log "$iface is disabled via $ENABLED_VAR"
+  fi
 done
 
 log "Network configuration done."
