@@ -2,7 +2,9 @@
 set -e
 cd "$(dirname "$0")"
 
-# Create settings.env if not exists
+echo "🔧 Starting CompanionPi NetworkManager-based setup..."
+
+# Step 1: settings.env aanmaken of editen
 if [ ! -f settings.env ]; then
     echo "⚙️  Copying default settings.env..."
     cp settings-default.env settings.env
@@ -16,16 +18,25 @@ else
     fi
 fi
 
-# Install network manager
+# Step 2: settings.env kopiëren naar systeemlocatie
+echo "📂 Copying settings.env to system location..."
+sudo mkdir -p /etc/companionpi
+sudo cp settings.env /etc/companionpi/settings.env
+
+# Step 3: dependencies installeren
 echo "📦 Installing dependencies..."
 sudo apt update
-sudo apt install -y network-manager
-sudo apt install -y python3-flask
-sudo apt install -y dnsmasq
+sudo apt install -y network-manager python3-flask dnsmasq
 
-echo "🛠 Installing netconfig.sh to /usr/local/bin"
+# Step 4: scripts installeren
+echo "📄 Copying scripts to /usr/local/bin..."
+sudo cp netconfig.sh /usr/local/bin/netconfig.sh
+sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
+sudo cp check.sh /usr/local/bin/check.sh
+sudo chmod +x /usr/local/bin/*.sh
 
-echo "🛠 Creating systemd service for netconfig"
+# Step 5: systemd service voor netconfig
+echo "🛠 Creating netconfig systemd service..."
 sudo tee /etc/systemd/system/netconfig.service > /dev/null <<EOT
 [Unit]
 Description=CompanionPi network configuration
@@ -40,17 +51,13 @@ RemainAfterExit=true
 WantedBy=multi-user.target
 EOT
 
-sudo systemctl daemon-reload
-sudo systemctl enable netconfig
-
-# Install Flask web interface
-echo "📦 Installing Flask web interface..."
-
+# Step 6: Flask webinterface installeren
+echo "🌐 Installing Flask WebApp..."
 sudo mkdir -p /opt/WebApp
-sudo cp -r WebApp /opt/
+sudo cp -r WebApp/* /opt/WebApp/
 sudo chmod +x /opt/WebApp/config-web.py
 
-echo "🛠 Installing config-web systemd service..."
+echo "🛠 Creating config-web systemd service..."
 sudo tee /etc/systemd/system/config-web.service > /dev/null <<EOT
 [Unit]
 Description=CompanionPi Web Interface
@@ -65,20 +72,12 @@ Restart=always
 WantedBy=multi-user.target
 EOT
 
-echo "🔧 Starting CompanionPi NetworkManager-based setup..."
-sudo cp netconfig.sh /usr/local/bin/netconfig.sh
-sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
-sudo cp check.sh /usr/local/bin/check.sh
-sudo chmod +x /usr/local/bin/*.sh
-
+# Step 7: systemd reload en services activeren
 sudo systemctl daemon-reload
+sudo systemctl enable netconfig
 sudo systemctl enable config-web
-
-echo "📂 Copying settings.env to system location..."
-sudo mkdir -p /etc/companionpi
-sudo cp settings.env /etc/companionpi/settings.env
 
 echo ""
 echo "✅ Installation complete."
-echo "🔁 Please reboot your Raspberry Pi to apply the network configuration, use the following command:"
+echo "🔁 Please reboot your Raspberry Pi to apply the network configuration:"
 echo "    sudo reboot"
