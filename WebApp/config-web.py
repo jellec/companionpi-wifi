@@ -34,14 +34,12 @@ def get_eth0_fix_settings():
 
 # Function to retrieve current WiFi AP settings using nmcli
 def get_wifi_ap_settings():
-    # Use nmcli to get detailed information about eth0-fix connection
-    cmd = "nmcli -f IP4.ADDRESS,802-11-wireless.ssid connection show Wifi-AP"
-    output = subprocess.check_output(cmd, shell=True, text=True).strip()
-
-    # Extract ipv4.addresses from the output
-    wifi = {'ipv4_address': output.split()[1]}  # Get ipv4.address
-
-    return output
+    try:
+        cmd = "nmcli -f IP4.ADDRESS,802-11-wireless.ssid connection show Wifi-AP"
+        output = subprocess.check_output(cmd, shell=True, text=True).strip()
+        return output
+    except subprocess.CalledProcessError as e:
+        return {'error': f"Connection 'Wifi-AP' not found or not active."}
 
 
 def get_dhcp_range():
