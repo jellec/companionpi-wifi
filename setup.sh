@@ -1,16 +1,16 @@
 #!/bin/bash
 set -e
 
-echo "📥 Downloading CompanionPi-wifi installer..."
+TMP_DIR="/tmp/companionpi-wifi"
 
-# Download zip met correcte bestandsnaam
-wget -q https://github.com/jellec/companionpi-wifi/archive/refs/heads/main.zip -O companionpi-wifi.zip
+echo "📥 Downloading CompanionPi-wifi setup..."
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
+cd "$TMP_DIR"
 
-# Unzip en opruimen
-unzip -q companionpi-wifi.zip
-rm companionpi-wifi.zip
-
-# Ga naar map en voer installatie uit
+curl -sL https://github.com/jellec/companionpi-wifi/archive/refs/heads/main.zip -o companionpi-wifi.zip
+unzip -oq companionpi-wifi.zip
 cd companionpi-wifi-main
+
 chmod +x install.sh
 ./install.sh
