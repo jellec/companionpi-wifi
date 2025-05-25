@@ -30,10 +30,14 @@ sudo apt install -y network-manager python3-flask dnsmasq
 
 # Step 4: scripts installeren
 echo "📄 Copying scripts to /usr/local/bin..."
+
 sudo cp netconfig.sh /usr/local/bin/netconfig.sh
 sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
+sudo cp eth_monitor.sh /usr/local/bin/eth_monitor.sh
 sudo cp check.sh /usr/local/bin/check.sh
+sudo cp generate-eth-monitor-services.sh /usr/local/bin/generate-eth-monitor-services.sh
 sudo chmod +x /usr/local/bin/*.sh
+sudo systemctl restart dnsmasq
 
 # Step 5: systemd service voor netconfig
 echo "🛠 Creating netconfig systemd service..."
@@ -76,6 +80,10 @@ EOT
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 sudo systemctl enable config-web
+
+echo "⚙️ Generating eth-monitor services based on settings.env..."
+sudo /usr/local/bin/generate-eth-monitor-services.sh
+sudo systemctl daemon-reload
 
 echo ""
 echo "✅ Installation complete."
