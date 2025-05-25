@@ -8,7 +8,7 @@
     echo "🔍 Scanning for enabled ETH interfaces in settings..."
 
     grep -E '^ETH[0-9]+_ENABLED=true' "$SETTINGS_FILE" | cut -d_ -f1 | sort -u | while read -r PREFIX; do
-        IFACE="${PREFIX,,}"  # e.g. eth0
+        IFACE=$(echo "$PREFIX" | tr '[:upper:]' '[:lower:]')
         SERVICE_NAME="${IFACE}-monitor.service"
         SERVICE_PATH="${SERVICE_DIR}/${SERVICE_NAME}"
 
