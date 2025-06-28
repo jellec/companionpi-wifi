@@ -17,12 +17,14 @@ for svc in netconfig config-web dnsmasq; do
 done
 
 echo ""
-echo "[Interfaces & IP Addresses]"
+echo "[Interfaces & IP Configuration]"
 for iface in $(ls /sys/class/net | grep -E '^eth|^wlan'); do
-  ip=$(ip -4 addr show "$iface" | grep -oP '(?<=inet\s)\d+(\.\d+){3}' || true)
+  ip=$(ip -4 addr show "$iface" | grep -oP '(?<=inet\s)\d+(\.\d+){3}' || echo "-")
   mac=$(cat /sys/class/net/$iface/address)
   state=$(cat "/sys/class/net/$iface/operstate")
-  echo "$iface: IP=$ip, MAC=$mac ($state)"
+  gw=$(nmcli -g IP4.GATEWAY device show "$iface" 2>/dev/null | grep -v '^--' || echo "-")
+  dns=$(nmcli -g IP4.DNS device show "$iface" 2>/dev/null | grep -v '^--' | paste -sd "," - || echo "-")
+  echo "$iface: IP=$ip, MAC=$mac, GATEWAY=$gw, DNS=$dns ($state)"
 done
 
 echo ""
@@ -82,7 +84,7 @@ echo "[Recent Logs: dnsmasq]"
 journalctl -u dnsmasq --no-pager -n 10 || echo "No logs found."
 
 echo ""
-echo "[Open TCP/UDP Ports]"
+echo "[Open TCP/UDP Ports (dns:53, dhcp:67, flask:8001)]"
 ss -tuln | grep -E ':53|:67|:8001' || echo "No relevant ports are open."
 
 echo ""
