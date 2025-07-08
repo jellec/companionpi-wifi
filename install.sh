@@ -50,7 +50,9 @@ sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-confi
 echo "📡 Checking Wi-Fi regulatory domain settings..."
 source "$SETTINGS_LOCAL"
 WIFI_COUNTRY="${WIFI_COUNTRY:-BE}"
+
 CURRENT_COUNTRY=$(sudo raspi-config nonint get_wifi_country 2>/dev/null || echo "NOT_SET")
+
 if [ "$CURRENT_COUNTRY" = "NOT_SET" ] || [ "$CURRENT_COUNTRY" = "00" ]; then
     echo "⚠️  Wi-Fi country not set. Setting to: $WIFI_COUNTRY"
     sudo raspi-config nonint do_wifi_country "$WIFI_COUNTRY"
@@ -91,6 +93,7 @@ sudo mkdir -p /opt/WebApp
 sudo cp -r WebApp/* /opt/WebApp/
 sudo chmod +x /opt/WebApp/config-web.py
 
+echo "🛠 Creating config-web systemd service..."
 sudo tee /etc/systemd/system/config-web.service > /dev/null <<EOT
 [Unit]
 Description=CompanionPi Web Interface
@@ -105,15 +108,31 @@ Restart=always
 WantedBy=multi-user.target
 EOT
 
-# Step 6: Download and install Bitfocus Companion prebuilt release
+# Step 6: Bitfocus Companion installation (prebuilt)
 echo "🎛 Downloading and installing Bitfocus Companion prebuilt release..."
-sudo mkdir -p /opt/companion
-cd /opt/companion
-wget -qO companion.tar.gz https://builds.bitfocus.io/raspberrypi/v4/stable/companion-latest.tar.gz
-sudo tar -xvzf companion.tar.gz --strip-components=1
-sudo rm companion.tar.gz
+COMPANION_DIR="/opt/companion"
+COMPANION_BIN="$COMPANION_DIR/companion"
 
-# Create companion systemd service
+# Clean previous installation if broken
+sudo rm -rf "$COMPANION_DIR"
+sudo mkdir -p "$COMPANION_DIR"
+sudo chown "$USER":"$USER" "$COMPANION_DIR"
+cd "$COMPANION_DIR"
+
+# Download latest release
+COMPANION_URL="https://github.com/bitfocus/companion/releases/latest/download/companion-rpi.zip"
+
+if curl -fLo companion.zip "$COMPANION_URL"; then
+    unzip companion.zip
+    chmod +x companion
+    echo "✅ Companion downloaded and unpacked"
+else
+    echo "❌ ERROR: Failed to download Companion binary from GitHub"
+    exit 1
+fi
+
+# Step 7: systemd service
+echo "🛠 Creating systemd service for Companion..."
 sudo tee /etc/systemd/system/companion.service > /dev/null <<EOT
 [Unit]
 Description=Bitfocus Companion
@@ -123,13 +142,13 @@ After=network.target
 ExecStart=/opt/companion/companion
 WorkingDirectory=/opt/companion
 Restart=always
-User=root
+User=$USER
 
 [Install]
 WantedBy=multi-user.target
 EOT
 
-# Step 7: Activate services
+# Step 8: Enable everything
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 sudo systemctl enable config-web
@@ -141,5 +160,5 @@ sudo systemctl daemon-reload
 
 echo ""
 echo "✅ Installation complete."
-echo "🔁 Please reboot your Raspberry Pi to apply the network configuration:"
+echo "🔁 Please reboot your Raspberry Pi to apply all settings:"
 echo "    sudo reboot"

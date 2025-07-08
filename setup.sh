@@ -1,9 +1,11 @@
 #!/bin/bash
 set -e
+set -x  # DEBUG
 
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
+SYSTEM_SETTINGS="/etc/companionpi/settings.env"
 
 echo "📦 CompanionPi Setup started..."
 echo "🌐 Repo: $REPO_URL"
@@ -29,6 +31,12 @@ rm -rf "$REPO_DIR"
 echo "⬇️ Cloning latest version of CompanionPi WiFi Addon..."
 git clone "$REPO_URL" "$REPO_DIR"
 
+# 📂 Reuse settings if available
+if [ -f "$SYSTEM_SETTINGS" ]; then
+    echo "🛠 Reusing existing settings from $SYSTEM_SETTINGS"
+    cp "$SYSTEM_SETTINGS" "$REPO_DIR/settings.env"
+fi
+
 # 📂 Navigate into repo and check for install script
 cd "$REPO_DIR"
 if [ ! -f "$INSTALL_SCRIPT" ]; then
@@ -38,6 +46,6 @@ fi
 
 chmod +x "$INSTALL_SCRIPT"
 
-# 🚀 Run install.sh with optional flags
+# 🚀 Start install script
 echo "🚀 Running install.sh from cloned repo..."
-./"$INSTALL_SCRIPT" "$@"
+./install.sh
