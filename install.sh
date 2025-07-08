@@ -44,20 +44,13 @@ fi
 # Step 2: Install dependencies
 echo "📦 Installing required packages..."
 sudo apt update
-sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config curl
-
-# Node.js + npm via NodeSource
-echo "📦 Installing Node.js (via NodeSource)..."
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
+sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config curl unzip
 
 # Step 2.5: Wi-Fi country check
 echo "📡 Checking Wi-Fi regulatory domain settings..."
 source "$SETTINGS_LOCAL"
 WIFI_COUNTRY="${WIFI_COUNTRY:-BE}"
-
 CURRENT_COUNTRY=$(sudo raspi-config nonint get_wifi_country 2>/dev/null || echo "NOT_SET")
-
 if [ "$CURRENT_COUNTRY" = "NOT_SET" ] || [ "$CURRENT_COUNTRY" = "00" ]; then
     echo "⚠️  Wi-Fi country not set. Setting to: $WIFI_COUNTRY"
     sudo raspi-config nonint do_wifi_country "$WIFI_COUNTRY"
@@ -92,13 +85,12 @@ RemainAfterExit=true
 WantedBy=multi-user.target
 EOT
 
-# Step 5: Flask web interface
+# Step 5: Flask webinterface
 echo "🌐 Installing Flask WebApp..."
 sudo mkdir -p /opt/WebApp
 sudo cp -r WebApp/* /opt/WebApp/
 sudo chmod +x /opt/WebApp/config-web.py
 
-echo "🛠 Creating config-web systemd service..."
 sudo tee /etc/systemd/system/config-web.service > /dev/null <<EOT
 [Unit]
 Description=CompanionPi Web Interface
@@ -113,38 +105,31 @@ Restart=always
 WantedBy=multi-user.target
 EOT
 
-# Step 6: Bitfocus Companion setup
-if [ ! -f /etc/systemd/system/companion.service ]; then
-    echo "🎛 Installing Bitfocus Companion..."
-    sudo mkdir -p /opt/companion
-    sudo chown "$USER":"$USER" /opt/companion
-    if [ ! -d /opt/companion/.git ]; then
-      git clone --depth=1 https://github.com/bitfocus/companion /opt/companion
-    else
-      echo "🌀 Companion repo already cloned, skipping..."
-    fi
+# Step 6: Download and install Bitfocus Companion prebuilt release
+echo "🎛 Downloading and installing Bitfocus Companion prebuilt release..."
+sudo mkdir -p /opt/companion
+cd /opt/companion
+wget -qO companion.tar.gz https://builds.bitfocus.io/raspberrypi/v4/stable/companion-latest.tar.gz
+sudo tar -xvzf companion.tar.gz --strip-components=1
+sudo rm companion.tar.gz
 
-    echo "🛠 Creating systemd service for Companion..."
-    sudo tee /etc/systemd/system/companion.service > /dev/null <<EOT
+# Create companion systemd service
+sudo tee /etc/systemd/system/companion.service > /dev/null <<EOT
 [Unit]
 Description=Bitfocus Companion
 After=network.target
 
 [Service]
+ExecStart=/opt/companion/companion
 WorkingDirectory=/opt/companion
-ExecStart=/usr/bin/npm start
 Restart=always
-User=$USER
-Environment=NODE_ENV=production
+User=root
 
 [Install]
 WantedBy=multi-user.target
 EOT
-else
-    echo "ℹ️  Companion service already exists, skipping setup."
-fi
 
-# Step 7: Activate all services
+# Step 7: Activate services
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 sudo systemctl enable config-web
