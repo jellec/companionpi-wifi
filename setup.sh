@@ -1,8 +1,16 @@
 #!/bin/bash
 set -e
+set -x  # DEBUG
 
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
+
+# Install git if not available
+if ! command -v git &>/dev/null; then
+  echo "📦 git niet gevonden – installeren..."
+  sudo apt update
+  sudo apt install -y git
+fi
 
 echo "📦 CompanionPi Setup gestart..."
 echo "🌐 Repo: $REPO_URL"
