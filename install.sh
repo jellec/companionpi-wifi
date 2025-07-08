@@ -2,7 +2,7 @@
 set -e
 cd "$(dirname "$0")"
 
-echo "🔧 Starting CompanionPi NetworkManager-based setup..."
+echo "🔧 Starting CompanionPi WiFi Addon setup..."
 
 SETTINGS_DEFAULT="settings-default.env"
 SETTINGS_LOCAL="settings.env"
@@ -44,22 +44,7 @@ fi
 # Step 2: Install dependencies
 echo "📦 Installing required packages..."
 sudo apt update
-sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config curl unzip
-
-# Step 2.5: Wi-Fi country check
-echo "📡 Checking Wi-Fi regulatory domain settings..."
-source "$SETTINGS_LOCAL"
-WIFI_COUNTRY="${WIFI_COUNTRY:-BE}"
-
-CURRENT_COUNTRY=$(sudo raspi-config nonint get_wifi_country 2>/dev/null || echo "NOT_SET")
-
-if [ "$CURRENT_COUNTRY" = "NOT_SET" ] || [ "$CURRENT_COUNTRY" = "00" ]; then
-    echo "⚠️  Wi-Fi country not set. Setting to: $WIFI_COUNTRY"
-    sudo raspi-config nonint do_wifi_country "$WIFI_COUNTRY"
-    echo "✅ Wi-Fi country set to $WIFI_COUNTRY"
-else
-    echo "✅ Wi-Fi country already set to: $CURRENT_COUNTRY"
-fi
+sudo apt install -y network-manager python3-flask dnsmasq git curl
 
 # Step 3: Install scripts
 echo "📄 Installing scripts to /usr/local/bin..."
@@ -87,7 +72,7 @@ RemainAfterExit=true
 WantedBy=multi-user.target
 EOT
 
-# Step 5: Flask webinterface
+# Step 5: Flask WebApp
 echo "🌐 Installing Flask WebApp..."
 sudo mkdir -p /opt/WebApp
 sudo cp -r WebApp/* /opt/WebApp/
@@ -108,51 +93,19 @@ Restart=always
 WantedBy=multi-user.target
 EOT
 
-# Step 6: Bitfocus Companion installation (prebuilt)
-echo "🎛 Downloading and installing Bitfocus Companion prebuilt release..."
-COMPANION_DIR="/opt/companion"
-COMPANION_BIN="$COMPANION_DIR/companion"
-
-# Clean previous installation if broken
-sudo rm -rf "$COMPANION_DIR"
-sudo mkdir -p "$COMPANION_DIR"
-sudo chown "$USER":"$USER" "$COMPANION_DIR"
-cd "$COMPANION_DIR"
-
-# Download latest release
-COMPANION_URL="https://github.com/bitfocus/companion/releases/latest/download/companion-rpi.zip"
-
-if curl -fLo companion.zip "$COMPANION_URL"; then
-    unzip companion.zip
-    chmod +x companion
-    echo "✅ Companion downloaded and unpacked"
+# Step 6: Check if Companion is running
+echo "🔍 Checking if Companion is already installed..."
+if systemctl is-active --quiet companion; then
+  echo "✅ Companion service is already running."
 else
-    echo "❌ ERROR: Failed to download Companion binary from GitHub"
-    exit 1
+  echo "⚠️  Companion service is not active. Please verify manually if needed."
 fi
 
-# Step 7: systemd service
-echo "🛠 Creating systemd service for Companion..."
-sudo tee /etc/systemd/system/companion.service > /dev/null <<EOT
-[Unit]
-Description=Bitfocus Companion
-After=network.target
-
-[Service]
-ExecStart=/opt/companion/companion
-WorkingDirectory=/opt/companion
-Restart=always
-User=$USER
-
-[Install]
-WantedBy=multi-user.target
-EOT
-
-# Step 8: Enable everything
+# Step 7: Enable services
+echo "⚙️ Enabling services..."
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 sudo systemctl enable config-web
-sudo systemctl enable companion
 
 echo "⚙️ Generating eth-monitor services based on settings.env..."
 sudo /usr/local/bin/generate-eth-monitor-services.sh
@@ -160,5 +113,5 @@ sudo systemctl daemon-reload
 
 echo ""
 echo "✅ Installation complete."
-echo "🔁 Please reboot your Raspberry Pi to apply all settings:"
+echo "🔁 Please reboot your Raspberry Pi to apply the network configuration:"
 echo "    sudo reboot"
