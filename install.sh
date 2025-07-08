@@ -44,12 +44,7 @@ fi
 # Step 2: Install dependencies
 echo "📦 Installing required packages..."
 sudo apt update
-sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config curl
-
-# Step 2.1: Install Node.js 18 LTS
-echo "📦 Installing Node.js 18.x (required for Companion)..."
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
+sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config curl npm
 
 # Step 2.5: Wi-Fi country check
 echo "📡 Checking Wi-Fi regulatory domain settings..."
@@ -113,22 +108,17 @@ Restart=always
 WantedBy=multi-user.target
 EOT
 
-# Step 6: Bitfocus Companion installatie
-echo "🎛 Installing Bitfocus Companion..."
-sudo mkdir -p /opt/companion
-sudo chown "$USER":"$USER" /opt/companion
-if [ ! -d /opt/companion/.git ]; then
-  git clone --depth=1 https://github.com/bitfocus/companion /opt/companion
-else
-  echo "🌀 Companion repo already cloned, skipping..."
-fi
+# Step 6: Bitfocus Companion installatie (alleen als het nog niet draait)
+echo "🎛 Ensuring Bitfocus Companion is installed..."
+if [ ! -f /etc/systemd/system/companion.service ]; then
+  sudo mkdir -p /opt/companion
+  sudo chown "$USER":"$USER" /opt/companion
+  if [ ! -d /opt/companion/.git ]; then
+    git clone --depth=1 https://github.com/bitfocus/companion /opt/companion
+  fi
 
-echo "📦 Installing Node.js dependencies (npm install)..."
-cd /opt/companion
-npm install
-
-echo "🛠 Creating systemd service for Companion..."
-sudo tee /etc/systemd/system/companion.service > /dev/null <<EOT
+  echo "🛠 Creating companion systemd service..."
+  sudo tee /etc/systemd/system/companion.service > /dev/null <<EOF
 [Unit]
 Description=Bitfocus Companion
 After=network.target
@@ -142,13 +132,16 @@ Environment=NODE_ENV=production
 
 [Install]
 WantedBy=multi-user.target
-EOT
+EOF
+else
+  echo "ℹ️  Companion service already exists. Skipping creation."
+fi
 
 # Step 7: Activatie van alle services
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 sudo systemctl enable config-web
-sudo systemctl enable companion
+sudo systemctl enable companion || true
 
 echo "⚙️ Generating eth-monitor services based on settings.env..."
 sudo /usr/local/bin/generate-eth-monitor-services.sh
