@@ -12,14 +12,9 @@ SETTINGS_TARGET="/etc/companionpi/settings.env"
 if [ ! -f "$SETTINGS_LOCAL" ]; then
     echo "⚙️  No local settings found, copying default..."
     cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
-
     echo ""
-    echo "🛠 You will now edit your local network settings using nano:"
-    echo "   - Adjust values for ETH0, WLAN0, etc."
-    echo "   - Save with [Ctrl+O] and exit with [Ctrl+X]."
-    echo "   - These settings will be copied to /etc/companionpi/"
-    echo ""
-    read -p "Press Enter to continue..."
+    echo "📝 Please review and edit your network settings now."
+    echo "🔧 Use CTRL+S to save, CTRL+X to exit."
     nano "$SETTINGS_LOCAL"
 else
     echo "📝 Local settings.env exists."
@@ -31,14 +26,6 @@ else
             echo ""
             read -p "⚠️  Differences found. Overwrite system settings with local version? [y/N] " overwrite
             if [[ "$overwrite" =~ ^[Yy]$ ]]; then
-                echo ""
-                echo "🛠 You will now edit the updated local settings before applying:"
-                echo "   - Make any changes you need to the network configuration."
-                echo "   - Save with [Ctrl+O] and exit with [Ctrl+X]."
-                echo ""
-                read -p "Press Enter to continue..."
-                nano "$SETTINGS_LOCAL"
-
                 sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
                 echo "✅ Updated system settings."
             else
@@ -55,12 +42,27 @@ else
 fi
 
 # Step 2: Install dependencies
-echo "📦 Installing dependencies..."
+echo "📦 Installing required packages..."
 sudo apt update
-sudo apt install -y network-manager python3-flask dnsmasq git
+sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config
+
+# Step 2.5: Wi-Fi country check
+echo "📡 Checking Wi-Fi regulatory domain settings..."
+source "$SETTINGS_LOCAL"
+WIFI_COUNTRY="${WIFI_COUNTRY:-BE}"
+
+CURRENT_COUNTRY=$(sudo raspi-config nonint get_wifi_country 2>/dev/null || echo "NOT_SET")
+
+if [ "$CURRENT_COUNTRY" = "NOT_SET" ] || [ "$CURRENT_COUNTRY" = "00" ]; then
+    echo "⚠️  Wi-Fi country not set. Setting to: $WIFI_COUNTRY"
+    sudo raspi-config nonint do_wifi_country "$WIFI_COUNTRY"
+    echo "✅ Wi-Fi country set to $WIFI_COUNTRY"
+else
+    echo "✅ Wi-Fi country already set to: $CURRENT_COUNTRY"
+fi
 
 # Step 3: Install scripts
-echo "📄 Copying scripts to /usr/local/bin..."
+echo "📄 Installing scripts to /usr/local/bin..."
 sudo cp netconfig.sh /usr/local/bin/netconfig.sh
 sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
 sudo cp eth_monitor.sh /usr/local/bin/eth_monitor.sh
@@ -69,7 +71,7 @@ sudo cp generate-eth-monitor-services.sh /usr/local/bin/generate-eth-monitor-ser
 sudo chmod +x /usr/local/bin/*.sh
 sudo systemctl restart dnsmasq
 
-# Step 4: Create netconfig service
+# Step 4: netconfig service
 echo "🛠 Creating netconfig systemd service..."
 sudo tee /etc/systemd/system/netconfig.service > /dev/null <<EOT
 [Unit]
@@ -85,7 +87,7 @@ RemainAfterExit=true
 WantedBy=multi-user.target
 EOT
 
-# Step 5: Install Flask WebApp
+# Step 5: Flask webinterface
 echo "🌐 Installing Flask WebApp..."
 sudo mkdir -p /opt/WebApp
 sudo cp -r WebApp/* /opt/WebApp/
@@ -106,7 +108,7 @@ Restart=always
 WantedBy=multi-user.target
 EOT
 
-# Step 6: Activate systemd services
+# Step 6: Activate everything
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 sudo systemctl enable config-web
