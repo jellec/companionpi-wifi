@@ -44,7 +44,7 @@ fi
 # Step 2: Install dependencies
 echo "📦 Installing required packages..."
 sudo apt update
-sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config
+sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config curl
 
 # Step 2.5: Wi-Fi country check
 echo "📡 Checking Wi-Fi regulatory domain settings..."
@@ -108,10 +108,41 @@ Restart=always
 WantedBy=multi-user.target
 EOT
 
-# Step 6: Activate everything
+# Step 6: Bitfocus Companion installatie
+echo "🎛 Installing Bitfocus Companion..."
+sudo mkdir -p /opt/companion
+sudo chown "$USER":"$USER" /opt/companion
+if [ ! -d /opt/companion/.git ]; then
+  git clone --depth=1 https://github.com/bitfocus/companion /opt/companion
+else
+  echo "🌀 Companion repo already cloned, skipping..."
+fi
+
+echo "🔗 Creating symlink /opt/companion-module-dev..."
+sudo ln -sfn /opt/companion /opt/companion-module-dev
+
+echo "🛠 Creating systemd service for Companion..."
+sudo tee /etc/systemd/system/companion.service > /dev/null <<EOT
+[Unit]
+Description=Bitfocus Companion
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/companion
+ExecStart=/usr/bin/npm start
+Restart=always
+User=$USER
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+EOT
+
+# Step 7: Activatie van alle services
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 sudo systemctl enable config-web
+sudo systemctl enable companion
 
 echo "⚙️ Generating eth-monitor services based on settings.env..."
 sudo /usr/local/bin/generate-eth-monitor-services.sh
