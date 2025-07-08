@@ -44,7 +44,12 @@ fi
 # Step 2: Install dependencies
 echo "📦 Installing required packages..."
 sudo apt update
-sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config curl npm
+sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config curl
+
+# Node.js + npm via NodeSource
+echo "📦 Installing Node.js (via NodeSource)..."
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
 
 # Step 2.5: Wi-Fi country check
 echo "📡 Checking Wi-Fi regulatory domain settings..."
@@ -87,7 +92,7 @@ RemainAfterExit=true
 WantedBy=multi-user.target
 EOT
 
-# Step 5: Flask webinterface
+# Step 5: Flask web interface
 echo "🌐 Installing Flask WebApp..."
 sudo mkdir -p /opt/WebApp
 sudo cp -r WebApp/* /opt/WebApp/
@@ -108,17 +113,19 @@ Restart=always
 WantedBy=multi-user.target
 EOT
 
-# Step 6: Bitfocus Companion installatie (alleen als het nog niet draait)
-echo "🎛 Ensuring Bitfocus Companion is installed..."
+# Step 6: Bitfocus Companion setup
 if [ ! -f /etc/systemd/system/companion.service ]; then
-  sudo mkdir -p /opt/companion
-  sudo chown "$USER":"$USER" /opt/companion
-  if [ ! -d /opt/companion/.git ]; then
-    git clone --depth=1 https://github.com/bitfocus/companion /opt/companion
-  fi
+    echo "🎛 Installing Bitfocus Companion..."
+    sudo mkdir -p /opt/companion
+    sudo chown "$USER":"$USER" /opt/companion
+    if [ ! -d /opt/companion/.git ]; then
+      git clone --depth=1 https://github.com/bitfocus/companion /opt/companion
+    else
+      echo "🌀 Companion repo already cloned, skipping..."
+    fi
 
-  echo "🛠 Creating companion systemd service..."
-  sudo tee /etc/systemd/system/companion.service > /dev/null <<EOF
+    echo "🛠 Creating systemd service for Companion..."
+    sudo tee /etc/systemd/system/companion.service > /dev/null <<EOT
 [Unit]
 Description=Bitfocus Companion
 After=network.target
@@ -132,16 +139,16 @@ Environment=NODE_ENV=production
 
 [Install]
 WantedBy=multi-user.target
-EOF
+EOT
 else
-  echo "ℹ️  Companion service already exists. Skipping creation."
+    echo "ℹ️  Companion service already exists, skipping setup."
 fi
 
-# Step 7: Activatie van alle services
+# Step 7: Activate all services
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 sudo systemctl enable config-web
-sudo systemctl enable companion || true
+sudo systemctl enable companion
 
 echo "⚙️ Generating eth-monitor services based on settings.env..."
 sudo /usr/local/bin/generate-eth-monitor-services.sh
