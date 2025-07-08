@@ -8,10 +8,18 @@ SETTINGS_DEFAULT="settings-default.env"
 SETTINGS_LOCAL="settings.env"
 SETTINGS_TARGET="/etc/companionpi/settings.env"
 
-# Stap 1: settings.env maken of vergelijken
+# Step 1: Create or compare settings.env
 if [ ! -f "$SETTINGS_LOCAL" ]; then
     echo "⚙️  No local settings found, copying default..."
     cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
+
+    echo ""
+    echo "🛠 You will now edit your local network settings using nano:"
+    echo "   - Adjust values for ETH0, WLAN0, etc."
+    echo "   - Save with [Ctrl+O] and exit with [Ctrl+X]."
+    echo "   - These settings will be copied to /etc/companionpi/"
+    echo ""
+    read -p "Press Enter to continue..."
     nano "$SETTINGS_LOCAL"
 else
     echo "📝 Local settings.env exists."
@@ -23,6 +31,14 @@ else
             echo ""
             read -p "⚠️  Differences found. Overwrite system settings with local version? [y/N] " overwrite
             if [[ "$overwrite" =~ ^[Yy]$ ]]; then
+                echo ""
+                echo "🛠 You will now edit the updated local settings before applying:"
+                echo "   - Make any changes you need to the network configuration."
+                echo "   - Save with [Ctrl+O] and exit with [Ctrl+X]."
+                echo ""
+                read -p "Press Enter to continue..."
+                nano "$SETTINGS_LOCAL"
+
                 sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
                 echo "✅ Updated system settings."
             else
@@ -38,12 +54,12 @@ else
     fi
 fi
 
-# Stap 2: dependencies
+# Step 2: Install dependencies
 echo "📦 Installing dependencies..."
 sudo apt update
 sudo apt install -y network-manager python3-flask dnsmasq git
 
-# Stap 3: scripts
+# Step 3: Install scripts
 echo "📄 Copying scripts to /usr/local/bin..."
 sudo cp netconfig.sh /usr/local/bin/netconfig.sh
 sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
@@ -53,7 +69,7 @@ sudo cp generate-eth-monitor-services.sh /usr/local/bin/generate-eth-monitor-ser
 sudo chmod +x /usr/local/bin/*.sh
 sudo systemctl restart dnsmasq
 
-# Stap 4: netconfig service
+# Step 4: Create netconfig service
 echo "🛠 Creating netconfig systemd service..."
 sudo tee /etc/systemd/system/netconfig.service > /dev/null <<EOT
 [Unit]
@@ -69,7 +85,7 @@ RemainAfterExit=true
 WantedBy=multi-user.target
 EOT
 
-# Stap 5: webinterface
+# Step 5: Install Flask WebApp
 echo "🌐 Installing Flask WebApp..."
 sudo mkdir -p /opt/WebApp
 sudo cp -r WebApp/* /opt/WebApp/
@@ -90,7 +106,7 @@ Restart=always
 WantedBy=multi-user.target
 EOT
 
-# Stap 6: activatie
+# Step 6: Activate systemd services
 sudo systemctl daemon-reload
 sudo systemctl enable netconfig
 sudo systemctl enable config-web

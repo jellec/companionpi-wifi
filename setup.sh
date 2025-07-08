@@ -5,26 +5,32 @@ set -x  # DEBUG
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 
-# Install git if not available
-if ! command -v git &>/dev/null; then
-  echo "📦 git niet gevonden – installeren..."
-  sudo apt update
-  sudo apt install -y git
-fi
-
-echo "📦 CompanionPi Setup gestart..."
+echo "📦 CompanionPi Setup started..."
 echo "🌐 Repo: $REPO_URL"
 echo "📁 Doelmap: $REPO_DIR"
 
-echo "🧹 Verwijderen van oude tijdelijke installatiemap (indien aanwezig)..."
+# 🧼 System updates
+echo "🔄 Updating package lists..."
+sudo apt update
+
+echo "⬆️ Upgrading installed packages..."
+sudo apt upgrade -y
+
+# 🛠️ Install git if missing
+if ! command -v git &> /dev/null; then
+    echo "🔧 git is not installed, installing it now..."
+    sudo apt install -y git
+fi
+
+echo "🧹 Removing old temporary installation folder (if necessary)..."
 rm -rf "$REPO_DIR"
 
-echo "⬇️ Clonen van de laatste versie van CompanionPi..."
+echo "⬇️ Cloning latest version of CompanionPi..."
 git clone "$REPO_URL" "$REPO_DIR"
 
-echo "📂 Map openen en installatiescript starten..."
+echo "📂 Opening Installation folder..."
 cd "$REPO_DIR"
 chmod +x install.sh
 
-echo "🚀 Installatie starten..."
+echo "🚀 Start install ..."
 ./install.sh
