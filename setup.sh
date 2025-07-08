@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
-set -x  # DEBUG
 
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
+INSTALL_SCRIPT="install.sh"
 
 echo "📦 CompanionPi Setup started..."
 echo "🌐 Repo: $REPO_URL"
-echo "📁 Doelmap: $REPO_DIR"
+echo "📁 Temporary directory: $REPO_DIR"
 
 # 🧼 System updates
 echo "🔄 Updating package lists..."
@@ -22,15 +22,22 @@ if ! command -v git &> /dev/null; then
     sudo apt install -y git
 fi
 
-echo "🧹 Removing old temporary installation folder (if necessary)..."
+# 🔄 Clone repository
+echo "🧹 Removing old temporary install folder (if present)..."
 rm -rf "$REPO_DIR"
 
-echo "⬇️ Cloning latest version of CompanionPi..."
+echo "⬇️ Cloning latest version of CompanionPi WiFi Addon..."
 git clone "$REPO_URL" "$REPO_DIR"
 
-echo "📂 Opening Installation folder..."
+# 📂 Navigate into repo and check for install script
 cd "$REPO_DIR"
-chmod +x install.sh
+if [ ! -f "$INSTALL_SCRIPT" ]; then
+    echo "❌ ERROR: install.sh not found in cloned repo."
+    exit 1
+fi
 
-echo "🚀 Start install ..."
-./install.sh
+chmod +x "$INSTALL_SCRIPT"
+
+# 🚀 Run install.sh with optional flags
+echo "🚀 Running install.sh from cloned repo..."
+./"$INSTALL_SCRIPT" "$@"

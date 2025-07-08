@@ -46,6 +46,11 @@ echo "📦 Installing required packages..."
 sudo apt update
 sudo apt install -y network-manager python3-flask dnsmasq git rfkill raspi-config curl
 
+# Step 2.1: Install Node.js 18 LTS
+echo "📦 Installing Node.js 18.x (required for Companion)..."
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
 # Step 2.5: Wi-Fi country check
 echo "📡 Checking Wi-Fi regulatory domain settings..."
 source "$SETTINGS_LOCAL"
@@ -118,8 +123,9 @@ else
   echo "🌀 Companion repo already cloned, skipping..."
 fi
 
-echo "🔗 Creating symlink /opt/companion-module-dev..."
-sudo ln -sfn /opt/companion /opt/companion-module-dev
+echo "📦 Installing Node.js dependencies (npm install)..."
+cd /opt/companion
+npm install
 
 echo "🛠 Creating systemd service for Companion..."
 sudo tee /etc/systemd/system/companion.service > /dev/null <<EOT
