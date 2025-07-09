@@ -122,6 +122,8 @@ configure_wlan_interface() {
       ipv4.addresses "$IP" \
       ipv4.method shared \
       wifi-sec.key-mgmt wpa-psk \
+      802-11-wireless-security.proto rsn \
+      802-11-wireless-security.pairwise ccmp \
       wifi-sec.psk "$PASS"
     nmcli connection up "$AP_CONN"
     log "Access Point started on $IFACE with SSID '$SSID' and IP $IP"
