@@ -10,66 +10,66 @@ log() {
   echo "[netconfig] $1"
 }
 
-check_ip() {
-  IFACE=$1
-  ip addr show "$IFACE" | grep -q 'inet '
-}
+# check_ip() {
+#   IFACE=$1
+#   ip addr show "$IFACE" | grep -q 'inet '
+# }
 
-configure_eth_interface() {
-  IFACE=$1
-  PREFIX=${IFACE^^}
-  MODE_VAR="${PREFIX}_MODE"
-  TIMEOUT_VAR="${PREFIX}_TIMEOUT"
-  FALLBACK_VAR="${PREFIX}_FALLBACK_IP"
-  AUTO_CONN="${IFACE}-auto"
-  FIX_CONN="${IFACE}-fix"
+# configure_eth_interface() {
+#   IFACE=$1
+#   PREFIX=${IFACE^^}
+#   MODE_VAR="${PREFIX}_MODE"
+#   TIMEOUT_VAR="${PREFIX}_TIMEOUT"
+#   FALLBACK_VAR="${PREFIX}_FALLBACK_IP"
+#   AUTO_CONN="${IFACE}-auto"
+#   FIX_CONN="${IFACE}-fix"
 
-  MODE=${!MODE_VAR:-auto}
-  TIMEOUT=${!TIMEOUT_VAR:-30}
-  FALLBACK_IP=${!FALLBACK_VAR}
+#   MODE=${!MODE_VAR:-auto}
+#   TIMEOUT=${!TIMEOUT_VAR:-30}
+#   FALLBACK_IP=${!FALLBACK_VAR}
 
-  log "Configuring $IFACE in mode: $MODE"
+#   log "Configuring $IFACE in mode: $MODE"
 
-  # Clean up previous connections
-  nmcli connection delete "$AUTO_CONN" &>/dev/null || true
-  nmcli connection delete "$FIX_CONN" &>/dev/null || true
+#   # Clean up previous connections
+#   nmcli connection delete "$AUTO_CONN" &>/dev/null || true
+#   nmcli connection delete "$FIX_CONN" &>/dev/null || true
 
-  # Create both profiles
-  nmcli connection add type ethernet ifname "$IFACE" con-name "$AUTO_CONN" ipv4.method auto
-  nmcli connection add type ethernet ifname "$IFACE" con-name "$FIX_CONN" ipv4.method manual ipv4.addresses "$FALLBACK_IP"
+#   # Create both profiles
+#   nmcli connection add type ethernet ifname "$IFACE" con-name "$AUTO_CONN" ipv4.method auto
+#   nmcli connection add type ethernet ifname "$IFACE" con-name "$FIX_CONN" ipv4.method manual ipv4.addresses "$FALLBACK_IP"
 
-  if [[ "$MODE" == "fix" ]]; then
-    log "$IFACE: Static mode – activating static IP"
-    nmcli connection up "$FIX_CONN"
+#   if [[ "$MODE" == "fix" ]]; then
+#     log "$IFACE: Static mode – activating static IP"
+#     nmcli connection up "$FIX_CONN"
 
-  elif [[ "$MODE" == "auto" ]]; then
-    log "$IFACE: Attempting DHCP first..."
-    nmcli connection up "$AUTO_CONN"
-    sleep "$TIMEOUT"
+#   elif [[ "$MODE" == "auto" ]]; then
+#     log "$IFACE: Attempting DHCP first..."
+#     nmcli connection up "$AUTO_CONN"
+#     sleep "$TIMEOUT"
 
-    if check_ip "$IFACE"; then
-      IP=$(ip -4 addr show "$IFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
-      log "$IFACE obtained DHCP IP: $IP"
-    else
-      log "$IFACE: No DHCP response after $TIMEOUT seconds – switching to fallback IP"
-      nmcli connection up "$FIX_CONN"
-    fi
+#     if check_ip "$IFACE"; then
+#       IP=$(ip -4 addr show "$IFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+#       log "$IFACE obtained DHCP IP: $IP"
+#     else
+#       log "$IFACE: No DHCP response after $TIMEOUT seconds – switching to fallback IP"
+#       nmcli connection up "$FIX_CONN"
+#     fi
 
-  else
-    log "$IFACE: Unknown mode '$MODE' – skipping configuration"
-  fi
+#   else
+#     log "$IFACE: Unknown mode '$MODE' – skipping configuration"
+#   fi
 
-  # Enable and start eth_monitor@<IFACE>.service
-  systemctl enable "eth_monitor@${IFACE}.service"
-  systemctl start "eth_monitor@${IFACE}.service"
-}
+#   # Enable and start eth_monitor@<IFACE>.service
+#   systemctl enable "eth_monitor@${IFACE}.service"
+#   systemctl start "eth_monitor@${IFACE}.service"
+# }
 
 configure_wlan_interface() {
   IFACE=$1
   PREFIX=${IFACE^^}
   MODE_VAR="${PREFIX}_MODE"
   MODE=${!MODE_VAR}
-  TIMEOUT=${WLAN0_TIMEOUT}
+  TIMEOUT=${WLAN0_TIMEOUT:-30}
 
   CLIENT_PROFILES_VAR="${PREFIX}_CLIENT_PROFILES[@]"
   SSID_VAR="${PREFIX}_AP_SSID"
