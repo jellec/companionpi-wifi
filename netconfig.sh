@@ -1,4 +1,6 @@
 #!/bin/bash
+# netconfig.sh – Configure Ethernet and Wi-Fi interfaces at boot
+
 set -e
 
 SETTINGS_FILE="/etc/companionpi/settings.env"
@@ -22,40 +24,44 @@ configure_eth_interface() {
   AUTO_CONN="${IFACE}-auto"
   FIX_CONN="${IFACE}-fix"
 
-  MODE=${!MODE_VAR:-auto}         # Default to 'auto' if not defined
-  TIMEOUT=${!TIMEOUT_VAR}
+  MODE=${!MODE_VAR:-auto}
+  TIMEOUT=${!TIMEOUT_VAR:-30}
   FALLBACK_IP=${!FALLBACK_VAR}
 
-  log "Setting up $IFACE in mode: $MODE"
+  log "Configuring $IFACE in mode: $MODE"
 
-  # Verwijder bestaande verbindingen met dezelfde naam om conflicten te vermijden
+  # Clean up previous connections
   nmcli connection delete "$AUTO_CONN" &>/dev/null || true
   nmcli connection delete "$FIX_CONN" &>/dev/null || true
 
-  # Maak beide profielen aan
+  # Create both profiles
   nmcli connection add type ethernet ifname "$IFACE" con-name "$AUTO_CONN" ipv4.method auto
   nmcli connection add type ethernet ifname "$IFACE" con-name "$FIX_CONN" ipv4.method manual ipv4.addresses "$FALLBACK_IP"
 
   if [[ "$MODE" == "fix" ]]; then
-    log "$IFACE: fix mode selected – applying static IP directly"
+    log "$IFACE: Static mode – activating static IP"
     nmcli connection up "$FIX_CONN"
 
   elif [[ "$MODE" == "auto" ]]; then
-    log "$IFACE: trying DHCP..."
+    log "$IFACE: Attempting DHCP first..."
     nmcli connection up "$AUTO_CONN"
     sleep "$TIMEOUT"
 
     if check_ip "$IFACE"; then
-      IP=$(ip -4 addr show "$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
-      log "$IFACE got DHCP IP: $IP"
+      IP=$(ip -4 addr show "$IFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+      log "$IFACE obtained DHCP IP: $IP"
     else
-      log "$IFACE: no DHCP response after $TIMEOUT sec – falling back to static IP"
+      log "$IFACE: No DHCP response after $TIMEOUT seconds – switching to fallback IP"
       nmcli connection up "$FIX_CONN"
     fi
 
   else
-    log "$IFACE: unknown mode '$MODE' – skipping"
+    log "$IFACE: Unknown mode '$MODE' – skipping configuration"
   fi
+
+  # Enable and start eth_monitor@<IFACE>.service
+  systemctl enable "eth_monitor@${IFACE}.service"
+  systemctl start "eth_monitor@${IFACE}.service"
 }
 
 configure_wlan_interface() {
@@ -74,7 +80,7 @@ configure_wlan_interface() {
   PASS=${!PASS_VAR}
   IP=${!IP_VAR}
 
-  log "Setting up $IFACE in mode: $MODE"
+  log "Configuring $IFACE in mode: $MODE"
 
   if [[ "$MODE" == "client" ]]; then
     nmcli dev wifi rescan ifname "$IFACE"
@@ -94,7 +100,7 @@ configure_wlan_interface() {
     done
 
     if [[ "$connected" == "false" ]]; then
-      log "No known SSID found. Switching to AP mode on $IFACE"
+      log "No known SSIDs found – switching to AP mode"
       MODE="ap"
     fi
   fi
@@ -110,11 +116,11 @@ configure_wlan_interface() {
       wifi-sec.key-mgmt wpa-psk \
       wifi-sec.psk "$PASS"
     nmcli connection up "$AP_CONN"
-    log "Started AP on $IFACE with SSID $SSID"
+    log "Access Point started on $IFACE with SSID '$SSID'"
   fi
 }
 
-log "Starting full network config..."
+log "🔧 Starting full network configuration..."
 
 eth_ifaces=$(grep -oP '^ETH\d+_TIMEOUT' "$SETTINGS_FILE" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]' | sort -u)
 wlan_ifaces=$(grep -oP '^WLAN\d+_MODE' "$SETTINGS_FILE" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]' | sort -u)
@@ -139,4 +145,4 @@ for iface in $wlan_ifaces; do
   fi
 done
 
-log "Network configuration done."
+log "✅ Network configuration finished."
