@@ -5,7 +5,7 @@ REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
 
-echo "JELLE V0.0.1"
+echo "JELLE V0.0.2"
 
 echo "📦 CompanionPi Setup started..."
 echo "🌐 Repo: $REPO_URL"
