@@ -55,22 +55,40 @@ log() {
 #     log "$IFACE: Unknown mode '$MODE' – skipping"
 #   fi
 # }
+#!/bin/bash
+# netconfig.sh – Configure Wi-Fi interfaces at boot (eth0 is ignored for now)
+
 
 configure_wlan_interface() {
   IFACE=$1
   PREFIX=${IFACE^^}
-  MODE=${!PREFIX"_MODE"}
-  TIMEOUT=${!PREFIX"_TIMEOUT":-30}
-  SSID=${!PREFIX"_AP_SSID"}
-  PASS=${!PREFIX"_AP_PASSWORD"}
-  IP=${!PREFIX"_AP_IP"}
 
-  DHCP_ENABLED=${!PREFIX"_DHCP_SERVER_ENABLED"}
-  DHCP_START=${!PREFIX"_DHCP_RANGE_START"}
-  DHCP_END=${!PREFIX"_DHCP_RANGE_END"}
-  DHCP_LEASE=${!PREFIX"_DHCP_LEASE_TIME":-12h}
-  DHCP_ROUTER=${!PREFIX"_DHCP_ROUTER":-$IP}
-  DHCP_DNS=${!PREFIX"_DHCP_DNS":-$IP}
+  MODE_VAR="${PREFIX}_MODE"
+  TIMEOUT_VAR="${PREFIX}_TIMEOUT"
+  CLIENT_PROFILES_VAR="${PREFIX}_CLIENT_PROFILES[@]"
+  SSID_VAR="${PREFIX}_AP_SSID"
+  PASS_VAR="${PREFIX}_AP_PASSWORD"
+  IP_VAR="${PREFIX}_AP_IP"
+
+  DHCP_ENABLED_VAR="${PREFIX}_DHCP_SERVER_ENABLED"
+  DHCP_START_VAR="${PREFIX}_DHCP_RANGE_START"
+  DHCP_END_VAR="${PREFIX}_DHCP_RANGE_END"
+  DHCP_LEASE_VAR="${PREFIX}_DHCP_LEASE_TIME"
+  DHCP_ROUTER_VAR="${PREFIX}_DHCP_ROUTER"
+  DHCP_DNS_VAR="${PREFIX}_DHCP_DNS"
+
+  MODE=${!MODE_VAR}
+  TIMEOUT=${!TIMEOUT_VAR:-30}
+  SSID=${!SSID_VAR}
+  PASS=${!PASS_VAR}
+  IP=${!IP_VAR}
+
+  DHCP_ENABLED=${!DHCP_ENABLED_VAR}
+  DHCP_START=${!DHCP_START_VAR}
+  DHCP_END=${!DHCP_END_VAR}
+  DHCP_LEASE=${!DHCP_LEASE_VAR:-12h}
+  DHCP_ROUTER=${!DHCP_ROUTER_VAR:-$IP}
+  DHCP_DNS=${!DHCP_DNS_VAR:-$IP}
 
   log "Configuring $IFACE in mode: $MODE"
 
@@ -80,12 +98,11 @@ configure_wlan_interface() {
     available=$(nmcli -t -f ssid dev wifi list ifname "$IFACE" | sort | uniq)
     connected=false
 
-    PROFILES_VAR="${PREFIX}_CLIENT_PROFILES[@]"
-    for entry in "${!PROFILES_VAR}"; do
+    for entry in "${!CLIENT_PROFILES_VAR}"; do
       ssid="${entry%%:*}"
       pass="${entry##*:}"
       if echo "$available" | grep -q "^$ssid$"; then
-        log "Connecting to Wi-Fi SSID: $ssid"
+        log "Connecting to known Wi-Fi SSID: $ssid"
         nmcli dev wifi connect "$ssid" password "$pass" ifname "$IFACE" && connected=true && break
       fi
     done
