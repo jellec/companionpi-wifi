@@ -23,47 +23,36 @@ SETTINGS_DEFAULT="settings-default.env"
 SETTINGS_LOCAL="settings.env"
 SETTINGS_TARGET="/etc/companionpi/settings.env"
 
-# Step 1: settings.env (unless only webapp)
+# Step 1: Handle settings.env
 if [[ "$ONLY_WEBAPP" = false ]]; then
-  if [ ! -f "$SETTINGS_LOCAL" ]; then
-    echo "⚙️  No local settings found, copying default..."
-    cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
-    echo ""
-    echo "📝 Please review and edit your network settings now."
-    echo "🔧 Use CTRL+S to save, CTRL+X to exit."
-    nano "$SETTINGS_LOCAL"
-  fi
+  sudo mkdir -p /etc/companionpi
 
-  if [ ! -f "$SETTINGS_TARGET" ]; then
-    echo "📂 Copying settings.env to system location..."
-    sudo mkdir -p /etc/companionpi
-    sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
-
-  elif [ "$FORCE_SETTINGS" = true ]; then
-    echo "⚙️  Forcing overwrite of system settings..."
-    sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
+  if [[ -f "$SETTINGS_TARGET" && "$FORCE_SETTINGS" = false ]]; then
+    echo "📂 A system settings file already exists: $SETTINGS_TARGET"
+    echo "📝 Please review and update it as needed."
+    echo "Press ENTER to open the editor..."
+    read
+    sudo nano "$SETTINGS_TARGET"
 
   else
-    echo "📝 Local settings.env exists."
-    echo "🔍 Comparing with system settings..."
-    diff_output=$(diff -u "$SETTINGS_TARGET" "$SETTINGS_LOCAL" || true)
-    if [ -n "$diff_output" ]; then
-      echo "$diff_output"
-      echo ""
-      read -p "⚠️  Differences found. Overwrite system settings with local version? [y/N] " overwrite
-      if [[ "$overwrite" =~ ^[Yy]$ ]]; then
-        sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
-        echo "✅ Updated system settings."
-      else
-        echo "❌ Keeping existing system settings."
-      fi
-    else
-      echo "✅ No differences found in settings."
+    # Copy default to local if it doesn't exist yet
+    if [ ! -f "$SETTINGS_LOCAL" ]; then
+      echo "⚙️  No local settings.env found – copying default..."
+      cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
     fi
+
+    echo "📋 No system settings file found (or --force-settings used)."
+    echo "📝 Please review and edit the settings before continuing."
+    echo "Press ENTER to open the editor..."
+    read
+    nano "$SETTINGS_LOCAL"
+
+    echo "📥 Saving settings to system path..."
+    sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
   fi
 fi
 
-# Step 2: scripts
+# Step 2: Install scripts
 if [[ "$ONLY_WEBAPP" = false ]]; then
   echo "📄 Installing scripts to /usr/local/bin..."
   sudo cp netconfig.sh /usr/local/bin/netconfig.sh
@@ -113,13 +102,13 @@ WantedBy=multi-user.target
 EOT
 fi
 
-# Step 4: enable services
+# Step 4: Enable services
 echo "🧩 Reloading and enabling services..."
 sudo systemctl daemon-reload
 [[ "$ONLY_WEBAPP" = false ]] && sudo systemctl enable netconfig
 [[ "$ONLY_SCRIPTS" = false ]] && sudo systemctl enable config-web
 
-# Step 5: eth-monitor services
+# Step 5: Eth-monitor services
 if [[ "$ONLY_WEBAPP" = false ]]; then
   echo "⚙️ Generating eth-monitor services based on settings.env..."
   sudo /usr/local/bin/generate-eth-monitor-services.sh
