@@ -2,63 +2,75 @@
 set -e
 cd "$(dirname "$0")"
 
-echo "🔧 Starting CompanionPi WiFi Addon setup..."
+echo "🔧 Starting CompanionPi installation..."
+
+# Flags
+ONLY_SCRIPTS=false
+ONLY_WEBAPP=false
+FORCE_SETTINGS=false
+DEV_MODE=false
+
+for arg in "$@"; do
+  case $arg in
+    --only-scripts) ONLY_SCRIPTS=true ;;
+    --only-webapp) ONLY_WEBAPP=true ;;
+    --force-settings) FORCE_SETTINGS=true ;;
+    --dev) DEV_MODE=true ;;
+  esac
+done
 
 SETTINGS_DEFAULT="settings-default.env"
 SETTINGS_LOCAL="settings.env"
 SETTINGS_TARGET="/etc/companionpi/settings.env"
 
-# Step 1: Create or compare settings.env
-if [ ! -f "$SETTINGS_LOCAL" ]; then
+# Step 1: settings.env (unless only webapp)
+if [[ "$ONLY_WEBAPP" = false ]]; then
+  if [ ! -f "$SETTINGS_LOCAL" ]; then
     echo "⚙️  No local settings found, copying default..."
     cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
     echo ""
     echo "📝 Please review and edit your network settings now."
     echo "🔧 Use CTRL+S to save, CTRL+X to exit."
     nano "$SETTINGS_LOCAL"
-else
+  fi
+
+  if [ ! -f "$SETTINGS_TARGET" ] || [ "$FORCE_SETTINGS" = true ]; then
+    echo "📂 Copying settings.env to system location..."
+    sudo mkdir -p /etc/companionpi
+    sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
+  else
     echo "📝 Local settings.env exists."
-    if [ -f "$SETTINGS_TARGET" ]; then
-        echo "🔍 Comparing with system settings..."
-        diff_output=$(diff -u "$SETTINGS_TARGET" "$SETTINGS_LOCAL" || true)
-        if [ -n "$diff_output" ]; then
-            echo "$diff_output"
-            echo ""
-            read -p "⚠️  Differences found. Overwrite system settings with local version? [y/N] " overwrite
-            if [[ "$overwrite" =~ ^[Yy]$ ]]; then
-                sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
-                echo "✅ Updated system settings."
-            else
-                echo "❌ Keeping existing system settings."
-            fi
-        else
-            echo "✅ No differences found in settings."
-        fi
-    else
-        echo "📂 Copying settings.env to system location..."
-        sudo mkdir -p /etc/companionpi
+    echo "🔍 Comparing with system settings..."
+    diff_output=$(diff -u "$SETTINGS_TARGET" "$SETTINGS_LOCAL" || true)
+    if [ -n "$diff_output" ]; then
+      echo "$diff_output"
+      echo ""
+      read -p "⚠️  Differences found. Overwrite system settings with local version? [y/N] " overwrite
+      if [[ "$overwrite" =~ ^[Yy]$ ]]; then
         sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
+        echo "✅ Updated system settings."
+      else
+        echo "❌ Keeping existing system settings."
+      fi
+    else
+      echo "✅ No differences found in settings."
     fi
+  fi
 fi
 
-# Step 2: Install dependencies
-echo "📦 Installing required packages..."
-sudo apt update
-sudo apt install -y network-manager python3-flask dnsmasq git curl
+# Step 2: scripts
+if [[ "$ONLY_WEBAPP" = false ]]; then
+  echo "📄 Installing scripts to /usr/local/bin..."
+  sudo cp netconfig.sh /usr/local/bin/netconfig.sh
+  sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
+  sudo cp eth_monitor.sh /usr/local/bin/eth_monitor.sh
+  sudo cp check.sh /usr/local/bin/check.sh
+  sudo cp generate-eth-monitor-services.sh /usr/local/bin/generate-eth-monitor-services.sh
+  sudo chmod +x /usr/local/bin/*.sh
+  sudo systemctl restart dnsmasq
 
-# Step 3: Install scripts
-echo "📄 Installing scripts to /usr/local/bin..."
-sudo cp netconfig.sh /usr/local/bin/netconfig.sh
-sudo cp generate-dnsmasq.sh /usr/local/bin/generate-dnsmasq.sh
-sudo cp eth_monitor.sh /usr/local/bin/eth_monitor.sh
-sudo cp check.sh /usr/local/bin/check.sh
-sudo cp generate-eth-monitor-services.sh /usr/local/bin/generate-eth-monitor-services.sh
-sudo chmod +x /usr/local/bin/*.sh
-sudo systemctl restart dnsmasq
-
-# Step 4: netconfig service
-echo "🛠 Creating netconfig systemd service..."
-sudo tee /etc/systemd/system/netconfig.service > /dev/null <<EOT
+  echo "🛠 Creating netconfig systemd service..."
+  sudo tee /etc/systemd/system/netconfig.service > /dev/null <<EOT
 [Unit]
 Description=CompanionPi network configuration
 After=network.target
@@ -71,15 +83,17 @@ RemainAfterExit=true
 [Install]
 WantedBy=multi-user.target
 EOT
+fi
 
-# Step 5: Flask WebApp
-echo "🌐 Installing Flask WebApp..."
-sudo mkdir -p /opt/WebApp
-sudo cp -r WebApp/* /opt/WebApp/
-sudo chmod +x /opt/WebApp/config-web.py
+# Step 3: WebApp
+if [[ "$ONLY_SCRIPTS" = false ]]; then
+  echo "🌐 Installing Flask WebApp..."
+  sudo mkdir -p /opt/WebApp
+  sudo cp -r WebApp/* /opt/WebApp/
+  sudo chmod +x /opt/WebApp/config-web.py
 
-echo "🛠 Creating config-web systemd service..."
-sudo tee /etc/systemd/system/config-web.service > /dev/null <<EOT
+  echo "🛠 Creating config-web systemd service..."
+  sudo tee /etc/systemd/system/config-web.service > /dev/null <<EOT
 [Unit]
 Description=CompanionPi Web Interface
 After=network.target
@@ -92,26 +106,22 @@ Restart=always
 [Install]
 WantedBy=multi-user.target
 EOT
-
-# Step 6: Check if Companion is running
-echo "🔍 Checking if Companion is already installed..."
-if systemctl is-active --quiet companion; then
-  echo "✅ Companion service is already running."
-else
-  echo "⚠️  Companion service is not active. Please verify manually if needed."
 fi
 
-# Step 7: Enable services
-echo "⚙️ Enabling services..."
+# Step 4: enable services
+echo "🧩 Reloading and enabling services..."
 sudo systemctl daemon-reload
-sudo systemctl enable netconfig
-sudo systemctl enable config-web
+[[ "$ONLY_WEBAPP" = false ]] && sudo systemctl enable netconfig
+[[ "$ONLY_SCRIPTS" = false ]] && sudo systemctl enable config-web
 
-echo "⚙️ Generating eth-monitor services based on settings.env..."
-sudo /usr/local/bin/generate-eth-monitor-services.sh
-sudo systemctl daemon-reload
+# Step 5: eth-monitor services
+if [[ "$ONLY_WEBAPP" = false ]]; then
+  echo "⚙️ Generating eth-monitor services based on settings.env..."
+  sudo /usr/local/bin/generate-eth-monitor-services.sh
+  sudo systemctl daemon-reload
+fi
 
 echo ""
 echo "✅ Installation complete."
-echo "🔁 Please reboot your Raspberry Pi to apply the network configuration:"
+echo "🔁 Please reboot your Raspberry Pi to apply the configuration:"
 echo "    sudo reboot"
