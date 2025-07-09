@@ -5,7 +5,10 @@ import os
 
 app = Flask(__name__)
 
-# Retrieve current eth0 status
+WIFI_IFACE = 'wlan0'
+WIFI_AP_CONN = f"{WIFI_IFACE}-ap"
+WIFI_DNSMASQ_CONF = f"/etc/dnsmasq.d/{WIFI_IFACE}_ap.conf"
+
 def get_eth0_settings():
     try:
         cmd = "nmcli -f GENERAL.CONNECTION,IP4.ADDRESS,IP4.GATEWAY device show eth0"
@@ -24,16 +27,16 @@ def get_eth0_fix_settings():
 
 def get_wifi_ap_settings():
     try:
-        cmd = "nmcli -f IP4.ADDRESS,802-11-wireless.ssid connection show Wifi-AP"
+        cmd = f"nmcli -f IP4.ADDRESS,802-11-wireless.ssid connection show '{WIFI_AP_CONN}'"
         output = subprocess.check_output(cmd, shell=True, text=True).strip()
         return output
     except subprocess.CalledProcessError:
-        return {'error': "Connection 'Wifi-AP' not found or not active."}
+        return {'error': f"Connection '{WIFI_AP_CONN}' not found or not active."}
 
 def get_dhcp_range():
     dhcp_range = {"start": None, "end": None}
     try:
-        with open('/etc/dnsmasq.d/wifi_ap.conf', 'r') as file:
+        with open(WIFI_DNSMASQ_CONF, 'r') as file:
             data = file.read()
             match = re.search(r'range=(\d+\.\d+\.\d+\.\d+),(\d+\.\d+\.\d+\.\d+),', data)
             if match:
@@ -51,19 +54,23 @@ def change_eth0_ip(new_ip):
     except subprocess.CalledProcessError:
         return False
 
-def change_wifi_ap_settings(new_ssid, new_wpa_passphrase, new_dhcp_range):
+def change_wifi_ap_settings(new_ssid, new_wpa_passphrase, new_ip):
     try:
-        cmd = f"sudo nmcli connection modify 'Wifi-AP' wifi.ssid {new_ssid} wifi-security.key-mgmt wpa-psk wifi-security.psk {new_wpa_passphrase}"
-        subprocess.run(cmd, shell=True)
-        cmd_dhcp = f"sudo sed -i 's/^dhcp-range=.*/dhcp-range={new_dhcp_range}/' /etc/dnsmasq.conf"
-        subprocess.run(cmd_dhcp, shell=True)
+        cmd = (
+            f"sudo nmcli connection modify '{WIFI_AP_CONN}' "
+            f"wifi.ssid {new_ssid} "
+            f"wifi-sec.key-mgmt wpa-psk "
+            f"wifi-sec.psk {new_wpa_passphrase} "
+            f"ipv4.addresses {new_ip}"
+        )
+        subprocess.run(cmd, shell=True, check=True)
         return True
     except subprocess.CalledProcessError:
         return False
 
 def write_dhcp_settings(start, end):
     try:
-        with open('/etc/dnsmasq.d/wifi_ap.conf', 'w') as file:
+        with open(WIFI_DNSMASQ_CONF, 'w') as file:
             file.write(f"dhcp-range={start},{end},12h\n")
         return True
     except Exception:
@@ -76,7 +83,6 @@ def index():
     wifi_ap_settings = get_wifi_ap_settings()
     wifi_dhcp_range = get_dhcp_range()
 
-    # Check for legacy folder (optional)
     path = '/opt/companion-module-dev'
     items = []
     path_warning = None
@@ -99,7 +105,7 @@ def index():
         eth0_fix_ip=eth0_fix_settings.get('ipv4_address'),
         wifi_ap_settings=wifi_ap_settings,
         wifi_ap_settings_ssid=wifi_ap_settings.split()[1] if isinstance(wifi_ap_settings, str) else None,
-        wifi_ap_settings_ip=wifi_ap_settings.split()[3] if isinstance(wifi_ap_settings, str) else None,
+        wifi_ap_settings_ip=wifi_ap_settings.split()[0] if isinstance(wifi_ap_settings, str) else None,
         wifi_ap_dhcp_range=wifi_dhcp_range,
         wifi_ap_dhcp_start=wifi_dhcp_range.get('start'),
         wifi_ap_dhcp_end=wifi_dhcp_range.get('end'),
