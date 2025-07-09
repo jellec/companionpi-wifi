@@ -16,7 +16,7 @@ echo "🔄 Updating package list..."
 sudo apt update
 
 echo "⬆️ Installing required packages..."
-sudo apt install -y git curl nano python3 python3-flask network-manager rfkill
+sudo apt install -y git curl nano dnsmasq python3 python3-flask network-manager rfkill
 
 # 🧹 Clean up any old repo
 echo "🧹 Removing old clone if present..."
