@@ -9,25 +9,30 @@ echo "📦 CompanionPi Setup started..."
 echo "🌐 Repo: $REPO_URL"
 echo "📁 Temporary directory: $REPO_DIR"
 
-# 🛠️ Check for git
-if ! command -v git &> /dev/null; then
-    echo "❌ ERROR: git is required but not installed. Please start from the CompanionPi image."
-    exit 1
-fi
+# 🧼 Update & dependency check
+echo "🔄 Updating package list..."
+sudo apt update
 
-# 🔄 Clone repository
+echo "⬆️ Installing required packages..."
+sudo apt install -y git curl nano python3 python3-flask network-manager rfkill
+
+# 🧹 Clean up any old repo
+echo "🧹 Removing old clone if present..."
 rm -rf "$REPO_DIR"
-echo "⬇️ Cloning latest version of CompanionPi WiFi Addon..."
+
+# ⬇️ Clone latest version
+echo "⬇️ Cloning latest CompanionPi Wifi repo..."
 git clone "$REPO_URL" "$REPO_DIR"
 
-# 📂 Navigate into repo and check for install script
+# ▶️ Run install script
 cd "$REPO_DIR"
 if [ ! -f "$INSTALL_SCRIPT" ]; then
-    echo "❌ ERROR: install.sh not found in cloned repo."
-    exit 1
+  echo "❌ ERROR: install.sh not found in $REPO_DIR"
+  exit 1
 fi
 
 chmod +x "$INSTALL_SCRIPT"
 
-# 🚀 Start install script
-./install.sh "$@"
+# 📦 Run install script with same arguments
+echo "🚀 Running install.sh..."
+./"$INSTALL_SCRIPT" "$@"
