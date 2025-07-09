@@ -34,10 +34,15 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     nano "$SETTINGS_LOCAL"
   fi
 
-  if [ ! -f "$SETTINGS_TARGET" ] || [ "$FORCE_SETTINGS" = true ]; then
+  if [ ! -f "$SETTINGS_TARGET" ]; then
     echo "📂 Copying settings.env to system location..."
     sudo mkdir -p /etc/companionpi
     sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
+
+  elif [ "$FORCE_SETTINGS" = true ]; then
+    echo "⚙️  Forcing overwrite of system settings..."
+    sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
+
   else
     echo "📝 Local settings.env exists."
     echo "🔍 Comparing with system settings..."
