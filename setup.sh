@@ -34,14 +34,14 @@ fi
 
 # Update APT + install required packages
 log "🔄 Updating package list..."
-if ! sudo apt update; then
+if ! sudo apt-get update; then
     log "❌ ERROR: Failed to update apt"
     exit 1
 fi
 
 REQUIRED_PKGS=(git curl nano dnsmasq python3 python3-flask network-manager rfkill)
 log "⬇️ Installing required packages: ${REQUIRED_PKGS[*]}"
-if ! sudo apt install -y "${REQUIRED_PKGS[@]}"; then
+if ! sudo apt-get install -y "${REQUIRED_PKGS[@]}"; then
     log "❌ ERROR: Failed to install required packages."
     exit 1
 fi
