@@ -3,14 +3,14 @@
 
 set -e
 
-VERSION="v0.0.25"
+VERSION="v0.0.26"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
 LOGFILE="$HOME/companionpi-setup.log"
 
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "     [$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
 show_help() {
@@ -98,6 +98,8 @@ if ! sudo ./"$INSTALL_SCRIPT" "$@"; then
 fi
 
 sudo chown -R $USER:$USER /tmp/companionpi-wifi
+
+cd  "$HOME"
 
 log ""
 log "✅ Setup finished successfully!"
