@@ -3,7 +3,7 @@
 
 set -e
 
-VERSION="v0.0.30"
+VERSION="v0.0.31"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
@@ -77,7 +77,7 @@ if [[ -d "$REPO_DIR/.git" ]]; then
     git fetch origin
     git reset --hard origin/main
 else
-    sudo rm -rf "$REPO_DIR"
+    rm -rf "$REPO_DIR"
     git clone --depth 1 "$REPO_URL" "$REPO_DIR"
 fi
 
@@ -91,14 +91,12 @@ fi
 
 chmod +x "$INSTALL_SCRIPT"
 
-# Run installer with sudo
-# log "🚀 Running sudo ./install.sh $*"
-# if ! sudo ./"$INSTALL_SCRIPT" "$@"; then
-#     log "❌ ERROR: install.sh failed"
-#     exit 1
-# fi
-
-sudo chown -R $USER:$USER /tmp/companionpi-wifi
+# Run installer (no sudo, user context)
+log "🚀 Running ./install.sh $*"
+if ! ./"$INSTALL_SCRIPT" "$@"; then
+    log "❌ ERROR: install.sh failed"
+    exit 1
+fi
 
 # Return to home directory to avoid accidental operations in the temporary repo directory
 cd
