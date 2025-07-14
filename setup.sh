@@ -3,7 +3,7 @@
 set -e
 
 # Variables
-VERSION="v0.0.6"
+VERSION="v0.0.7"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
@@ -38,7 +38,7 @@ fi
 # Update package list
 log "🔄 Updating package list..."
 if ! sudo apt update; then
-    log "❌ ERROR: Failed to update package list."
+    log "❌ ERROR: Failed to update package list (sudo or apt issue)."
     exit 1
 fi
 
@@ -50,7 +50,7 @@ if ! sudo apt install -y git curl nano dnsmasq python3 python3-flask network-man
 fi
 
 # Remove old repository clone if present
-log "🧹 Cleaning up previous clone..."
+log "🧹 Cleaning up previous clone (if any)..."
 rm -rf "$REPO_DIR"
 
 # Clone the latest repository
@@ -60,28 +60,40 @@ if ! git clone "$REPO_URL" "$REPO_DIR"; then
     exit 1
 fi
 
-# Run installation script
+# Change to repo directory
 cd "$REPO_DIR"
+
+# Check if install.sh exists
 if [ ! -f "$INSTALL_SCRIPT" ]; then
     log "❌ ERROR: $INSTALL_SCRIPT not found in $REPO_DIR"
     exit 1
 fi
 
-# Make installation script executable if it isn't already
+# Make install.sh executable
 if [ ! -x "$INSTALL_SCRIPT" ]; then
     chmod +x "$INSTALL_SCRIPT"
 fi
 
-# Run installation script with the same arguments
+# Run installation script with arguments
 log "🚀 Running $INSTALL_SCRIPT..."
 if ! ./"$INSTALL_SCRIPT" "$@"; then
     log "❌ ERROR: Failed to run $INSTALL_SCRIPT."
     exit 1
 fi
 
-# Create installation flag
-sudo mkdir -p /etc/companionpi
-sudo touch /etc/companionpi/installed.flag
+# Mark as installed only if everything succeeded
+log "✅ Installation script completed successfully."
+
+log "📌 Marking system as installed..."
+if ! sudo mkdir -p /etc/companionpi; then
+    log "❌ ERROR: Could not create /etc/companionpi"
+    exit 1
+fi
+
+if ! sudo touch /etc/companionpi/installed.flag; then
+    log "❌ ERROR: Could not create installed.flag"
+    exit 1
+fi
 
 log ""
 log "✅ CompanionPi setup complete!"
