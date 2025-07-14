@@ -78,8 +78,8 @@ log "🧹 Cleaning old repo clone..."
 rm -rf "$REPO_DIR"
 
 # Clone repo
-log "⬇️ Cloning CompanionPi-WiFi..."
-if ! git clone "$REPO_URL" "$REPO_DIR"; then
+log "⬇️ Cloning CompanionPi-WiFi (shallow)..."
+if ! git clone --depth 1 --branch main "$REPO_URL" "$REPO_DIR"; then
     log "❌ ERROR: Git clone failed"
     exit 1
 fi
