@@ -3,7 +3,7 @@
 
 set -e
 
-VERSION="v0.0.29"
+VERSION="v0.0.30"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
@@ -99,7 +99,7 @@ chmod +x "$INSTALL_SCRIPT"
 
 sudo chown -R $USER:$USER /tmp/companionpi-wifi
 
-cd  "$HOME"
+cd "$HOME"
 
 log ""
 log "✅ Setup finished successfully!"
