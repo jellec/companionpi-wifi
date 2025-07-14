@@ -7,8 +7,17 @@ SETTINGS_FILE="/etc/companionpi/settings.env"
 source "$SETTINGS_FILE"
 
 log() {
-  echo ""
-  echo "[netconfig] $1"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] [netconfig] $1"
+}
+
+# Function to retrieve settings from the settings file
+get_setting() {
+  local setting_name=$1
+  if [ -z "${!setting_name}" ]; then
+    log "Error: $setting_name is not set in $SETTINGS_FILE"
+    exit 1
+  fi
+  echo "${!setting_name}"
 }
 
 # ================================
@@ -55,58 +64,38 @@ log() {
 #     log "$IFACE: Unknown mode '$MODE' – skipping"
 #   fi
 # }
-#!/bin/bash
-# netconfig.sh – Configure Wi-Fi interfaces at boot (eth0 is ignored for now)
-
 
 configure_wlan_interface() {
-  IFACE=$1
-  PREFIX=${IFACE^^}
+  local IFACE=$1
+  local PREFIX=${IFACE^^}
 
-  MODE_VAR="${PREFIX}_MODE"
-  TIMEOUT_VAR="${PREFIX}_TIMEOUT"
-  CLIENT_PROFILES_VAR="${PREFIX}_CLIENT_PROFILES[@]"
-  SSID_VAR="${PREFIX}_AP_SSID"
-  PASS_VAR="${PREFIX}_AP_PASSWORD"
-  IP_VAR="${PREFIX}_AP_IP"
-
-  DHCP_ENABLED_VAR="${PREFIX}_DHCP_SERVER_ENABLED"
-  DHCP_START_VAR="${PREFIX}_DHCP_RANGE_START"
-  DHCP_END_VAR="${PREFIX}_DHCP_RANGE_END"
-  DHCP_LEASE_VAR="${PREFIX}_DHCP_LEASE_TIME"
-  DHCP_ROUTER_VAR="${PREFIX}_DHCP_ROUTER"
-  DHCP_DNS_VAR="${PREFIX}_DHCP_DNS"
-
-  MODE=${!MODE_VAR}
-  TIMEOUT=${!TIMEOUT_VAR:-30}
-  SSID=${!SSID_VAR}
-  PASS=${!PASS_VAR}
-  IP=${!IP_VAR}
-
-  DHCP_ENABLED=${!DHCP_ENABLED_VAR}
-  DHCP_START=${!DHCP_START_VAR}
-  DHCP_END=${!DHCP_END_VAR}
-  DHCP_LEASE=${!DHCP_LEASE_VAR:-12h}
-  DHCP_ROUTER=${!DHCP_ROUTER_VAR:-$IP}
-  DHCP_DNS=${!DHCP_DNS_VAR:-$IP}
+  local MODE=$(get_setting "${PREFIX}_MODE")
+  local TIMEOUT=$(get_setting "${PREFIX}_TIMEOUT")
+  local SSID=$(get_setting "${PREFIX}_AP_SSID")
+  local PASS=$(get_setting "${PREFIX}_AP_PASSWORD")
+  local IP=$(get_setting "${PREFIX}_AP_IP")
+  local DHCP_ENABLED=$(get_setting "${PREFIX}_DHCP_SERVER_ENABLED")
+  local DHCP_START=$(get_setting "${PREFIX}_DHCP_RANGE_START")
+  local DHCP_END=$(get_setting "${PREFIX}_DHCP_RANGE_END")
+  local DHCP_LEASE=$(get_setting "${PREFIX}_DHCP_LEASE_TIME")
+  local DHCP_ROUTER=$(get_setting "${PREFIX}_DHCP_ROUTER")
+  local DHCP_DNS=$(get_setting "${PREFIX}_DHCP_DNS")
 
   log "Configuring $IFACE in mode: $MODE"
 
   if [[ "$MODE" == "client" ]]; then
     nmcli dev wifi rescan ifname "$IFACE"
     sleep 2
-    available=$(nmcli -t -f ssid dev wifi list ifname "$IFACE" | sort | uniq)
-    connected=false
-
+    local available=$(nmcli -t -f ssid dev wifi list ifname "$IFACE" | sort | uniq)
+    local connected=false
     for entry in "${!CLIENT_PROFILES_VAR}"; do
-      ssid="${entry%%:*}"
-      pass="${entry##*:}"
+      local ssid="${entry%%:*}"
+      local pass="${entry##*:}"
       if echo "$available" | grep -q "^$ssid$"; then
         log "Connecting to known Wi-Fi SSID: $ssid"
         nmcli dev wifi connect "$ssid" password "$pass" ifname "$IFACE" && connected=true && break
       fi
     done
-
     if [[ "$connected" == false ]]; then
       log "No known SSIDs found – switching to AP mode"
       MODE="ap"
@@ -114,7 +103,7 @@ configure_wlan_interface() {
   fi
 
   if [[ "$MODE" == "ap" ]]; then
-    AP_CONN="${IFACE}-ap"
+    local AP_CONN="${IFACE}-ap"
     nmcli connection delete "$AP_CONN" &>/dev/null || true
     nmcli connection add type wifi ifname "$IFACE" con-name "$AP_CONN" autoconnect yes ssid "$SSID"
     nmcli connection modify "$AP_CONN" \
@@ -127,10 +116,9 @@ configure_wlan_interface() {
       wifi-sec.psk "$PASS"
     nmcli connection up "$AP_CONN"
     log "Access Point started on $IFACE with SSID '$SSID' and IP $IP"
-
     if [[ "$DHCP_ENABLED" == "true" ]]; then
       log "Configuring dnsmasq for DHCP on $IFACE"
-      sudo tee /etc/dnsmasq.d/${IFACE}_ap.conf > /dev/null <<EOT
+      sudo tee "/etc/dnsmasq.d/${IFACE}_ap.conf" > /dev/null <<EOT
 interface=$IFACE
 dhcp-range=$DHCP_START,$DHCP_END,$DHCP_LEASE
 dhcp-option=3,$DHCP_ROUTER
