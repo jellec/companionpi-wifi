@@ -3,7 +3,7 @@
 
 set -e
 
-VERSION="v0.0.19"
+VERSION="v0.0.20"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
@@ -31,11 +31,14 @@ show_help() {
 # Show help
 [[ "$1" == "--help" ]] && show_help
 
+log ""
+log "=============================================="
 log "📦 CompanionPi-WiFi Setup – version $VERSION" | tee -a "$LOGFILE"
 log "🌐 Repo: $REPO_URL" | tee -a "$LOGFILE"
 log "📁 Temp dir: $REPO_DIR" | tee -a "$LOGFILE"
 log "📝 Logfile: $LOGFILE" | tee -a "$LOGFILE"
-
+log "=============================================="
+log ""
 exec > >(tee -a "$LOGFILE") 2>&1
 
 # Already installed?

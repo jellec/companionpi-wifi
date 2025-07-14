@@ -88,11 +88,10 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     # Always open nano for review, even in non-interactive shells
     if command -v nano >/dev/null 2>&1; then
         echo "🔧 Opening nano to edit settings..."
-        # Try normal nano first
         ${EDITOR:-nano} "$SETTINGS_LOCAL" || {
             # If that fails, force nano with a new tty
-            if command -v script >/dev/null 2>&1; then
-                script -q -c "${EDITOR:-nano} \"$SETTINGS_LOCAL\"" /dev/null
+            if command -v setsid >/dev/null 2>&1; then
+                setsid "${EDITOR:-nano}" "$SETTINGS_LOCAL"
             else
                 sudo nano "$SETTINGS_LOCAL"
             fi
