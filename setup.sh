@@ -3,7 +3,7 @@
 
 set -e
 
-VERSION="v0.0.22"
+VERSION="v0.0.23"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
@@ -92,7 +92,7 @@ chmod +x "$INSTALL_SCRIPT"
 
 # Run installer with sudo
 log "🚀 Running sudo ./install.sh $*"
-if ! sudo ./"$INSTALL_SCRIPT" "$@"; then
+if ! ./"$INSTALL_SCRIPT" "$@"; then
     log "❌ ERROR: install.sh failed"
     exit 1
 fi
