@@ -85,14 +85,21 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_LOCAL"
     log "📝 Please review settings before continuing."
 
-    # Always open nano for review
-    if [[ -t 0 && -n "$PS1" ]]; then
-        echo "🔧 Press ENTER to edit settings in nano..."
-        read -r
-        exec < /dev/tty  # Ensure correct stdin for nano
-        ${EDITOR:-nano} "$SETTINGS_LOCAL"
+    # Always open nano for review, even in non-interactive shells
+    if command -v nano >/dev/null 2>&1; then
+        echo "🔧 Opening nano to edit settings..."
+        # Try normal nano first
+        ${EDITOR:-nano} "$SETTINGS_LOCAL" || {
+            # If that fails, force nano with a new tty
+            if command -v script >/dev/null 2>&1; then
+                script -q -c "${EDITOR:-nano} \"$SETTINGS_LOCAL\"" /dev/null
+            else
+                sudo nano "$SETTINGS_LOCAL"
+            fi
+        }
     else
-        log "⚠️  Skipping manual edit (non-interactive shell)"
+        log "❌ nano editor not found. Please install nano or set \$EDITOR."
+        exit 1
     fi
 
     log "📥 Copying to system path..."
