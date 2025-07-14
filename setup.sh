@@ -37,6 +37,7 @@ log "📦 CompanionPi-WiFi Setup – version $VERSION" | tee -a "$LOGFILE"
 log "🌐 Repo: $REPO_URL" | tee -a "$LOGFILE"
 log "📁 Temp dir: $REPO_DIR" | tee -a "$LOGFILE"
 log "📝 Logfile: $LOGFILE" | tee -a "$LOGFILE"
+log "User: $(whoami)" | tee -a "$LOGFILE"
 log "=============================================="
 log ""
 exec > >(tee -a "$LOGFILE") 2>&1
