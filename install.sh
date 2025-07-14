@@ -86,13 +86,13 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     log "📝 Please review settings before continuing."
 
     # Always open nano for review, even in non-interactive shells
-    if command -v nano >/dev/null 2>&1; then
-        echo "🔧 Opening nano to edit settings..."
-        nano "$SETTINGS_LOCAL" 
-    else
-        log "❌ nano editor not found. Please install nano or set \$EDITOR."
-        exit 1
-    fi
+    # if command -v nano >/dev/null 2>&1; then
+    #     echo "🔧 Opening nano to edit settings..."
+    #     nano "$SETTINGS_LOCAL" 
+    # else
+    #     log "❌ nano editor not found. Please install nano or set \$EDITOR."
+    #     exit 1
+    # fi
 
     nano "$SETTINGS_LOCAL" 
 
