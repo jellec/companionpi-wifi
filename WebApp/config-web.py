@@ -19,14 +19,15 @@ def run_cmd(cmd):
 def get_enabled_eth_ifaces():
     if not os.path.exists(SETTINGS_FILE):
         return []
-    enabled = []
+    enabled = set()
     with open(SETTINGS_FILE) as f:
         for line in f:
-            if line.strip().startswith("ETH") and "_ENABLED=true" in line:
-                prefix = line.split("_")[0]
-                iface = prefix.lower()
+            line = line.strip()
+            if re.match(r'^ETH\d+_ENABLED=true$', line):
+                prefix = line.split("_")[0]  # e.g. ETH0
+                iface = prefix.lower()       # eth0
                 if os.path.exists(f"/sys/class/net/{iface}"):
-                    enabled.append(iface)
+                    enabled.add(iface)
     return sorted(enabled)
 
 def get_eth_connection_details(iface):
