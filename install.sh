@@ -99,6 +99,7 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     # Open settings.env in nano as the current user (no sudo)
     if command -v nano >/dev/null 2>&1; then
         # nano "$SETTINGS_LOCAL"
+        log ""
     else
         log "❌ nano editor not found. Please install nano."
         exit 1
