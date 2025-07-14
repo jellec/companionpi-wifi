@@ -3,11 +3,38 @@
 
 set -e
 
-VERSION="v0.0.8"
+VERSION="v0.0.9"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
 LOGFILE="$HOME/companionpi-setup.log"
+
+print_help() {
+    cat <<EOF
+Usage: setup.sh [OPTIONS]
+
+This script installs CompanionPi-WiFi by cloning the GitHub repo and running install.sh.
+
+Options passed to setup.sh are forwarded to install.sh.
+
+Common options:
+  --help             Show this help message and exit
+  --only-scripts     Only install CLI scripts (no WebApp)
+  --only-webapp      Only install WebApp (no CLI tools or services)
+  --force-settings   Overwrite existing settings.env (will prompt with editor)
+  --force-install    Force installation even if already installed
+  --dev              Developer mode (e.g. use symlinks or development flags)
+
+EOF
+    exit 0
+}
+
+# Parse --help early before logging kicks in
+for arg in "$@"; do
+    if [[ "$arg" == "--help" ]]; then
+        print_help
+    fi
+done
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -68,7 +95,7 @@ fi
 chmod +x "$INSTALL_SCRIPT"
 
 # Run installer with sudo
-log "🚀 Running sudo ./install.sh $*"
+log "🚀 Running sudo ./$INSTALL_SCRIPT $*"
 if ! sudo ./"$INSTALL_SCRIPT" "$@"; then
     log "❌ ERROR: install.sh failed"
     exit 1
