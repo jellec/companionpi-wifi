@@ -1,11 +1,12 @@
 #!/bin/bash
 set -e
 
-SETTINGS_FILE="/etc/companionpi/settings.env"
+SETTINGS_FILE="/etc/companionpi-wifi/settings.env"
 
-echo "=== CompanionPi System Check (Extended) ==="
+echo "=== CompanionPi-WiFi System Check ==="
 echo ""
 
+# 1. Systemd Services
 echo "[Systemd Services]"
 for svc in netconfig config-web dnsmasq; do
   if systemctl list-units --type=service | grep -q "$svc"; then
@@ -17,6 +18,7 @@ for svc in netconfig config-web dnsmasq; do
 done
 
 echo ""
+# 2. Interfaces & IPs
 echo "[Interfaces & IP Configuration]"
 for iface in $(ls /sys/class/net | grep -E '^eth|^wlan'); do
   ip=$(ip -4 addr show "$iface" | grep -oP '(?<=inet\s)\d+(\.\d+){3}' || echo "-")
@@ -28,11 +30,13 @@ for iface in $(ls /sys/class/net | grep -E '^eth|^wlan'); do
 done
 
 echo ""
+# 3. Active connections
 echo "[Active nmcli Connections]"
 nmcli -t -f NAME,DEVICE,STATE connection show --active || echo "No active connections."
 
 echo ""
-echo "[Configured Connections Check]"
+# 4. Expected connection profiles
+echo "[Configured Connection Profiles]"
 for iface in $(ls /sys/class/net | grep -E '^eth|^wlan'); do
   for mode in auto fix ap; do
     name="${iface}-${mode}"
@@ -45,10 +49,12 @@ for iface in $(ls /sys/class/net | grep -E '^eth|^wlan'); do
 done
 
 echo ""
-echo "[WiFi SSID]"
+# 5. Wi-Fi status
+echo "[WiFi Status (nmcli)]"
 nmcli -t -f DEVICE,STATE,CONNECTION dev status | grep wlan || echo "No wlan interface connected."
 
 echo ""
+# 6. dnsmasq
 echo "[dnsmasq Status]"
 if pgrep dnsmasq >/dev/null; then
   echo "dnsmasq: running"
@@ -59,6 +65,7 @@ else
 fi
 
 echo ""
+# 7. DHCP leases
 echo "[DHCP Leases]"
 for leasefile in /var/lib/misc/dnsmasq.leases*; do
   if [ -f "$leasefile" ]; then
@@ -68,14 +75,18 @@ for leasefile in /var/lib/misc/dnsmasq.leases*; do
 done
 
 echo ""
-echo "[/etc/companionpi/settings.env]"
+# 8. Settings file
+echo "[/etc/companionpi-wifi/settings.env]"
 if [ -f "$SETTINGS_FILE" ]; then
+  grep -E '^(NETCONFIG_SKIP_INTERFACES|WIFI_COUNTRY)' "$SETTINGS_FILE" || true
+  echo "--- full (non-comment) dump:"
   grep -v '^#' "$SETTINGS_FILE" | grep -v '^$'
 else
   echo "settings.env not found."
 fi
 
 echo ""
+# 9. Logs
 echo "[Recent Logs: netconfig.service]"
 journalctl -u netconfig.service --no-pager -n 10 || echo "No logs found."
 
@@ -84,8 +95,9 @@ echo "[Recent Logs: dnsmasq]"
 journalctl -u dnsmasq --no-pager -n 10 || echo "No logs found."
 
 echo ""
+# 10. Open ports
 echo "[Open TCP/UDP Ports (dns:53, dhcp:67, flask:8001)]"
 ss -tuln | grep -E ':53|:67|:8001' || echo "No relevant ports are open."
 
 echo ""
-echo "=== Full Check Complete ==="
+echo "=== System Check Complete ==="
