@@ -4,6 +4,12 @@
 set -e
 cd "$(dirname "$0")"
 
+# Block root execution
+if [[ "$EUID" -eq 0 ]]; then
+    echo "❌ ERROR: Do not run install.sh as root or with sudo. Only use sudo where prompted."
+    exit 1
+fi
+
 # Logging
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -55,6 +61,7 @@ INSTALL_FLAG="/etc/companionpi-wifi/installed.flag"
 BACKUP_DIR="/etc/companionpi-wifi/backups"
 DEFAULT_USER=${SUDO_USER:-$(whoami)}
 
+# Only use sudo for system directories!
 sudo mkdir -p "$BACKUP_DIR"
 
 backup_settings() {
@@ -77,21 +84,19 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
         backup_settings
         log "📄 Copying to local: $SETTINGS_LOCAL"
         sudo cp "$SETTINGS_TARGET" "$SETTINGS_LOCAL"
+        sudo chown "$USER:$USER" "$SETTINGS_LOCAL"
     else
         log "⚙️ Using default settings."
         cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
     fi
 
-    sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_LOCAL"
     log "📝 Please review and edit your network settings."
-
-    # Pauze + ENTER prompt vóór editor
     echo ""
     echo "📄 Settings file: $SETTINGS_LOCAL"
     echo "Press ENTER to open the editor..."
     read
 
-    # Open settings.env in nano (of fallback editor)
+    # Open settings.env in nano (or fallback editor)
     if [ -n "$EDITOR" ] && command -v "$EDITOR" >/dev/null 2>&1; then
         "$EDITOR" "$SETTINGS_LOCAL"
     elif command -v nano >/dev/null 2>&1; then
@@ -126,7 +131,7 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
         fi
         sudo cp "$script" "/usr/local/bin/"
         sudo chmod +x "/usr/local/bin/$script"
-        sudo chown "$DEFAULT_USER:$DEFAULT_USER" "/usr/local/bin/$script"
+        sudo chown root:root "/usr/local/bin/$script"
     done
 
     log "🛠 Creating netconfig systemd service..."
@@ -153,7 +158,7 @@ if [[ "$ONLY_SCRIPTS" = false ]]; then
     sudo mkdir -p /opt/WebApp
     sudo cp -r WebApp/* /opt/WebApp/
     [[ -f /opt/WebApp/config-web.py ]] && sudo chmod +x /opt/WebApp/config-web.py
-    sudo chown -R "$DEFAULT_USER:$DEFAULT_USER" /opt/WebApp
+    sudo chown -R root:root /opt/WebApp
 
     log "🛠 Creating config-web systemd service..."
     echo "[Unit]
@@ -182,21 +187,21 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     sudo systemctl daemon-reload
 fi
 
-# Step 6: Permissions
+# Step 6: Permissions (only for system dirs, not repo)
 log "🔐 Fixing permissions..."
-sudo chown -R "$DEFAULT_USER:$DEFAULT_USER" /etc/companionpi-wifi
+sudo chown -R root:root /etc/companionpi-wifi
 sudo chmod -R u+rw /etc/companionpi-wifi
 for f in "${SCRIPT_LIST[@]}"; do
-    sudo chown "$DEFAULT_USER:$DEFAULT_USER" "/usr/local/bin/$f"
+    sudo chown root:root "/usr/local/bin/$f"
     sudo chmod u+rw "/usr/local/bin/$f"
 done
-sudo chown -R "$DEFAULT_USER:$DEFAULT_USER" /opt/WebApp
+sudo chown -R root:root /opt/WebApp
 sudo chmod -R u+rw /opt/WebApp
 
 # Step 7: Mark installed
 log "📌 Marking system as installed."
 sudo touch "$INSTALL_FLAG"
-sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$INSTALL_FLAG"
+sudo chown root:root "$INSTALL_FLAG"
 
 log ""
 log "✅ Installation complete."
