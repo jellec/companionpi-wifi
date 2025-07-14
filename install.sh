@@ -64,9 +64,13 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
 
     sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_LOCAL"
     log "📝 Please review settings before continuing."
-    echo "Press ENTER to open editor..."
-    read
-    ${EDITOR:-nano} "$SETTINGS_LOCAL"
+    if [[ -t 0 ]]; then
+        echo "Press ENTER to open editor..."
+        read
+        ${EDITOR:-nano} "$SETTINGS_LOCAL"
+    else
+        log "⚠️  Non-interactive shell – skipping manual edit of settings.env"
+    fi
     log "📥 Copying to system path..."
     sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
     sudo chmod 664 "$SETTINGS_TARGET"
