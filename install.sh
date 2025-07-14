@@ -83,49 +83,19 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     fi
 
     sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_LOCAL"
-    log "📝 Please review and set your basic network settings."
+    log "📝 Please review and edit your network settings."
 
-    show_menu() {
-        echo ""
-        echo "==== CompanionPi Basic Network Setup ===="
-        # Read current values or set defaults
-        ETH0_MODE=$(grep -E '^ETH0_MODE=' "$SETTINGS_LOCAL" | cut -d= -f2-)
-        ETH0_STATIC_IP=$(grep -E '^ETH0_STATIC_IP=' "$SETTINGS_LOCAL" | cut -d= -f2-)
-        WIFI_COUNTRY=$(grep -E '^WIFI_COUNTRY=' "$SETTINGS_LOCAL" | cut -d= -f2-)
-        WIFI_SSID=$(grep -E '^WIFI_SSID=' "$SETTINGS_LOCAL" | cut -d= -f2-)
-        WIFI_PASS=$(grep -E '^WIFI_PASS=' "$SETTINGS_LOCAL" | cut -d= -f2-)
-
-        read -p "Ethernet mode (dhcp/static) [${ETH0_MODE:-dhcp}]: " NEW_ETH0_MODE
-        ETH0_MODE=${NEW_ETH0_MODE:-${ETH0_MODE:-dhcp}}
-        read -p "Static IP for eth0 (leave blank for DHCP) [${ETH0_STATIC_IP}]: " NEW_ETH0_STATIC_IP
-        ETH0_STATIC_IP=${NEW_ETH0_STATIC_IP:-$ETH0_STATIC_IP}
-        read -p "WiFi country code (2-letter, e.g. BE) [${WIFI_COUNTRY:-BE}]: " NEW_WIFI_COUNTRY
-        WIFI_COUNTRY=${NEW_WIFI_COUNTRY:-${WIFI_COUNTRY:-BE}}
-        read -p "WiFi SSID [${WIFI_SSID:-CompanionPi}]: " NEW_WIFI_SSID
-        WIFI_SSID=${NEW_WIFI_SSID:-${WIFI_SSID:-CompanionPi}}
-        read -p "WiFi password [${WIFI_PASS:-changeme123}]: " NEW_WIFI_PASS
-        WIFI_PASS=${NEW_WIFI_PASS:-${WIFI_PASS:-changeme123}}
-
-        # Update or add values in settings file
-        grep -q "^ETH0_MODE=" "$SETTINGS_LOCAL" && \
-            sed -i.bak "s|^ETH0_MODE=.*|ETH0_MODE=$ETH0_MODE|" "$SETTINGS_LOCAL" || \
-            echo "ETH0_MODE=$ETH0_MODE" >> "$SETTINGS_LOCAL"
-        grep -q "^ETH0_STATIC_IP=" "$SETTINGS_LOCAL" && \
-            sed -i.bak "s|^ETH0_STATIC_IP=.*|ETH0_STATIC_IP=$ETH0_STATIC_IP|" "$SETTINGS_LOCAL" || \
-            echo "ETH0_STATIC_IP=$ETH0_STATIC_IP" >> "$SETTINGS_LOCAL"
-        grep -q "^WIFI_COUNTRY=" "$SETTINGS_LOCAL" && \
-            sed -i.bak "s|^WIFI_COUNTRY=.*|WIFI_COUNTRY=$WIFI_COUNTRY|" "$SETTINGS_LOCAL" || \
-            echo "WIFI_COUNTRY=$WIFI_COUNTRY" >> "$SETTINGS_LOCAL"
-        grep -q "^WIFI_SSID=" "$SETTINGS_LOCAL" && \
-            sed -i.bak "s|^WIFI_SSID=.*|WIFI_SSID=$WIFI_SSID|" "$SETTINGS_LOCAL" || \
-            echo "WIFI_SSID=$WIFI_SSID" >> "$SETTINGS_LOCAL"
-        grep -q "^WIFI_PASS=" "$SETTINGS_LOCAL" && \
-            sed -i.bak "s|^WIFI_PASS=.*|WIFI_PASS=$WIFI_PASS|" "$SETTINGS_LOCAL" || \
-            echo "WIFI_PASS=$WIFI_PASS" >> "$SETTINGS_LOCAL"
-    }
-
-    # Always show the menu
-    show_menu
+    # Open settings.env in nano (or fallback editor)
+    if [ -n "$EDITOR" ] && command -v "$EDITOR" >/dev/null 2>&1; then
+        "$EDITOR" "$SETTINGS_LOCAL"
+    elif command -v nano >/dev/null 2>&1; then
+        nano "$SETTINGS_LOCAL"
+    elif command -v vi >/dev/null 2>&1; then
+        vi "$SETTINGS_LOCAL"
+    else
+        log "❌ No editor found. Please install nano or vi, or set \$EDITOR."
+        exit 1
+    fi
 
     log "📥 Copying to system path..."
     sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
