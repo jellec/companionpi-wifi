@@ -85,10 +85,14 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
 
     sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_LOCAL"
     log "📝 Please review settings before continuing."
-    if [[ -t 0 ]]; then
+
+    if [[ "$NO_EDIT" != true && -t 0 && -n "$PS1" ]]; then
+        echo "🔧 Druk op ENTER om de editor te openen..."
+        read -r
+        exec < /dev/tty  # Zorg dat stdin juist is voor nano
         ${EDITOR:-nano} "$SETTINGS_LOCAL"
     else
-        log "⚠️  Non-interactive shell – skipping manual edit of settings.env"
+        log "⚠️  Skipping manual edit (non-interactive shell or --no-edit flag)"
     fi
     log "📥 Copying to system path..."
     sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"

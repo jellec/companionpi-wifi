@@ -3,7 +3,7 @@
 
 set -e
 
-VERSION="v0.0.13"
+VERSION="v0.0.15"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
