@@ -3,42 +3,33 @@
 
 set -e
 
-VERSION="v0.0.12"
+VERSION="v0.0.13"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
 LOGFILE="$HOME/companionpi-setup.log"
 
-print_help() {
-    cat <<EOF
-Usage: setup.sh [OPTIONS]
-
-This script installs CompanionPi-WiFi by cloning the GitHub repo and running install.sh.
-
-Options passed to setup.sh are forwarded to install.sh.
-
-Common options:
-  --help             Show this help message and exit
-  --only-scripts     Only install CLI scripts (no WebApp)
-  --only-webapp      Only install WebApp (no CLI tools or services)
-  --force-settings   Overwrite existing settings.env (will prompt with editor)
-  --force-install    Force installation even if already installed
-  --dev              Developer mode (e.g. use symlinks or development flags)
-
-EOF
-    exit 0
-}
-
-# Parse --help early before logging kicks in
-for arg in "$@"; do
-    if [[ "$arg" == "--help" ]]; then
-        print_help
-    fi
-done
-
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
+
+show_help() {
+    echo "CompanionPi-WiFi Setup $VERSION"
+    echo ""
+    echo "Usage: ./setup.sh [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --only-scripts      Install only CLI scripts (no web interface)"
+    echo "  --only-webapp       Install only web interface (no scripts)"
+    echo "  --force-settings    Overwrite existing settings.env"
+    echo "  --force-install     Skip all checks and force install"
+    echo "  --dev               Enable development mode"
+    echo "  --help              Show this help message"
+    exit 0
+}
+
+# Show help
+[[ "$1" == "--help" ]] && show_help
 
 log "📦 CompanionPi-WiFi Setup – version $VERSION" | tee -a "$LOGFILE"
 log "🌐 Repo: $REPO_URL" | tee -a "$LOGFILE"
@@ -48,8 +39,8 @@ log "📝 Logfile: $LOGFILE" | tee -a "$LOGFILE"
 exec > >(tee -a "$LOGFILE") 2>&1
 
 # Already installed?
-if [[ -f "/etc/companionpi-wifi/installed.flag" ]]; then
-    log "✅ Already installed. To reinstall: delete /etc/companionpi-wifi/installed.flag"
+if [[ -f "/etc/companionpi-wifi/installed.flag" && "$*" != *"--force-install"* ]]; then
+    log "✅ Already installed. Use --force-install to reinstall."
     exit 0
 fi
 
@@ -73,15 +64,17 @@ if ! sudo apt-get install -y "${REQUIRED_PKGS[@]}"; then
     exit 1
 fi
 
-# Clean old clone
-log "🧹 Cleaning old repo clone..."
-rm -rf "$REPO_DIR"
+# Fetch latest repo
+log "⬇️ Fetching latest CompanionPi-WiFi..."
 
-# Clone repo
-log "⬇️ Cloning CompanionPi-WiFi (shallow)..."
-if ! git clone --depth 1 --branch main "$REPO_URL" "$REPO_DIR"; then
-    log "❌ ERROR: Git clone failed"
-    exit 1
+if [[ -d "$REPO_DIR/.git" ]]; then
+    log "🔄 Repo exists – updating..."
+    cd "$REPO_DIR"
+    git fetch origin
+    git reset --hard origin/main
+else
+    rm -rf "$REPO_DIR"
+    git clone --depth 1 "$REPO_URL" "$REPO_DIR"
 fi
 
 cd "$REPO_DIR"
@@ -95,7 +88,7 @@ fi
 chmod +x "$INSTALL_SCRIPT"
 
 # Run installer with sudo
-log "🚀 Running sudo ./$INSTALL_SCRIPT $*"
+log "🚀 Running sudo ./install.sh $*"
 if ! sudo ./"$INSTALL_SCRIPT" "$@"; then
     log "❌ ERROR: install.sh failed"
     exit 1
