@@ -98,14 +98,14 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
 
     # Open settings.env in nano as the current user (no sudo)
     if command -v nano >/dev/null 2>&1; then
-        nano "$SETTINGS_LOCAL"
+        # nano "$SETTINGS_LOCAL"
     else
         log "❌ nano editor not found. Please install nano."
         exit 1
     fi
 
-    ./edit-settings.sh
-    
+    ./edit_settings.sh
+
 
     log "📥 Copying to system path..."
     sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
