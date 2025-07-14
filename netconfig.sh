@@ -11,19 +11,20 @@ if [ ! -f "$SETTINGS_FILE" ]; then
     exit 1
 fi
 
-source "$SETTINGS_FILE"
-
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [netconfig] $1"
 }
 
-# Interface checks
+get_setting() {
+    local key="$1"
+    grep -E "^${key}=" "$SETTINGS_FILE" | cut -d= -f2- | tr -d '"'
+}
+
 interface_exists() {
     local iface=$1
     ip link show "$iface" &>/dev/null
 }
 
-# Parse skip list (e.g. eth1,wlan0)
 IFS=',' read -ra SKIP_IFS <<< "${NETCONFIG_SKIP_INTERFACES,,}"
 
 should_skip_iface() {
@@ -34,7 +35,6 @@ should_skip_iface() {
     return 1
 }
 
-# === ETHx ===
 configure_eth_interface() {
     local IFACE=$1
     local PREFIX=${IFACE^^}
@@ -47,10 +47,11 @@ configure_eth_interface() {
     local TIMEOUT=$(get_setting "${PREFIX}_TIMEOUT")
     local FALLBACK_IP=$(get_setting "${PREFIX}_FALLBACK_IP")
     local DHCP_RECHECK=$(get_setting "${PREFIX}_DHCP_RECHECK")
+
     local AUTO_CONN="${IFACE}-auto"
     local FIX_CONN="${IFACE}-fix"
 
-    log "🔌 Configuring $IFACE in mode: $MODE"
+    log "🔌 Configuring $IFACE (mode: $MODE)"
 
     nmcli connection delete "$AUTO_CONN" &>/dev/null || true
     nmcli connection delete "$FIX_CONN" &>/dev/null || true
@@ -78,21 +79,8 @@ configure_eth_interface() {
             log "$IFACE: DHCP success"
         fi
     fi
-
-    # DHCP server
-    if [[ "$(get_setting "${PREFIX}_DHCP_SERVER_ENABLED")" == "true" ]]; then
-        log "📡 Enabling DHCP server on $IFACE"
-        sudo tee "/etc/dnsmasq.d/${IFACE}_dhcp.conf" > /dev/null <<EOT
-interface=$IFACE
-dhcp-range=$(get_setting "${PREFIX}_DHCP_RANGE_START"),$(get_setting "${PREFIX}_DHCP_RANGE_END"),$(get_setting "${PREFIX}_DHCP_LEASE_TIME")
-dhcp-option=3,$(get_setting "${PREFIX}_DHCP_ROUTER")
-dhcp-option=6,$(get_setting "${PREFIX}_DHCP_DNS")
-EOT
-        sudo systemctl restart dnsmasq
-    fi
 }
 
-# === WLANx ===
 configure_wlan_interface() {
     local IFACE=$1
     local PREFIX=${IFACE^^}
@@ -143,21 +131,9 @@ configure_wlan_interface() {
             wifi-sec.psk "$PASS"
         nmcli connection up "$CONN"
         log "$IFACE: AP started (SSID=$SSID, IP=$IP)"
-
-        if [[ "$(get_setting "${PREFIX}_DHCP_SERVER_ENABLED")" == "true" ]]; then
-            log "📡 Enabling DHCP server for $IFACE (AP)"
-            sudo tee "/etc/dnsmasq.d/${IFACE}_ap.conf" > /dev/null <<EOT
-interface=$IFACE
-dhcp-range=$(get_setting "${PREFIX}_DHCP_RANGE_START"),$(get_setting "${PREFIX}_DHCP_RANGE_END"),$(get_setting "${PREFIX}_DHCP_LEASE_TIME")
-dhcp-option=3,$(get_setting "${PREFIX}_DHCP_ROUTER")
-dhcp-option=6,$(get_setting "${PREFIX}_DHCP_DNS")
-EOT
-            sudo systemctl restart dnsmasq
-        fi
     fi
 }
 
-# === Main ===
 log "⚙️ Starting CompanionPi-WiFi network configuration..."
 
 eth_ifaces=$(grep -oP '^ETH\d+_MODE' "$SETTINGS_FILE" | cut -d_ -f1 | tr '[:upper:]' '[:lower:]' | sort -u)
