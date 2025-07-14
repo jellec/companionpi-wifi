@@ -1,101 +1,80 @@
 #!/bin/bash
+# setup.sh – CompanionPi-WiFi installer (minimal, only uses sudo where needed)
 
 set -e
 
-# Variables
 VERSION="v0.0.7"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
-LOGFILE="/var/log/companionpi-wifi-setup.log"
+LOGFILE="$HOME/companionpi-setup.log"
 
-# Function for logging messages with timestamp
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# Start logging
-log "📦 CompanionPi-wifi Setup – version $VERSION"
-log "🌐 Repo: $REPO_URL"
-log "📁 Temporary directory: $REPO_DIR"
-log "📝 Logfile: $LOGFILE"
+log "📦 CompanionPi-WiFi Setup – version $VERSION" | tee -a "$LOGFILE"
+log "🌐 Repo: $REPO_URL" | tee -a "$LOGFILE"
+log "📁 Temp dir: $REPO_DIR" | tee -a "$LOGFILE"
+log "📝 Logfile: $LOGFILE" | tee -a "$LOGFILE"
 
 exec > >(tee -a "$LOGFILE") 2>&1
 
-# Check if CompanionPi-wifi is already installed
+# Already installed?
 if [[ -f "/etc/companionpi-wifi/installed.flag" ]]; then
-    log "✅ CompanionPi-wifi already appears to be installed. Exiting setup."
-    log "📝 To force reinstall, delete /etc/companionpi-wifi/installed.flag and rerun."
+    log "✅ Already installed. To reinstall: delete /etc/companionpi-wifi/installed.flag"
     exit 0
 fi
 
-# Check internet connection
-if ! ping -c 1 github.com &> /dev/null; then
+# Check internet
+if ! ping -c 1 github.com &>/dev/null; then
     log "❌ ERROR: No internet connection."
     exit 1
 fi
 
-# Update package list
+# Update APT + install required packages
 log "🔄 Updating package list..."
 if ! sudo apt update; then
-    log "❌ ERROR: Failed to update package list (sudo or apt issue)."
+    log "❌ ERROR: Failed to update apt"
     exit 1
 fi
 
-# Install required packages
-log "⬆️ Installing required packages..."
-if ! sudo apt install -y git curl nano dnsmasq python3 python3-flask network-manager rfkill; then
+REQUIRED_PKGS=(git curl nano dnsmasq python3 python3-flask network-manager rfkill)
+log "⬇️ Installing required packages: ${REQUIRED_PKGS[*]}"
+if ! sudo apt install -y "${REQUIRED_PKGS[@]}"; then
     log "❌ ERROR: Failed to install required packages."
     exit 1
 fi
 
-# Remove old repository clone if present
-log "🧹 Cleaning up previous clone (if any)..."
+# Clean old clone
+log "🧹 Cleaning old repo clone..."
 rm -rf "$REPO_DIR"
 
-# Clone the latest repository
-log "⬇️ Cloning latest CompanionPi-wifi repo..."
+# Clone repo
+log "⬇️ Cloning CompanionPi-WiFi..."
 if ! git clone "$REPO_URL" "$REPO_DIR"; then
-    log "❌ ERROR: Git clone failed – check internet connection or repo URL."
+    log "❌ ERROR: Git clone failed"
     exit 1
 fi
 
-# Change to repo directory
 cd "$REPO_DIR"
 
-# Check if install.sh exists
-if [ ! -f "$INSTALL_SCRIPT" ]; then
-    log "❌ ERROR: $INSTALL_SCRIPT not found in $REPO_DIR"
+# Check install.sh
+if [[ ! -f "$INSTALL_SCRIPT" ]]; then
+    log "❌ ERROR: install.sh not found"
     exit 1
 fi
 
-# Make install.sh executable
-if [ ! -x "$INSTALL_SCRIPT" ]; then
-    chmod +x "$INSTALL_SCRIPT"
-fi
+chmod +x "$INSTALL_SCRIPT"
 
-# Run installation script with arguments
-log "🚀 Running $INSTALL_SCRIPT..."
-if ! ./"$INSTALL_SCRIPT" "$@"; then
-    log "❌ ERROR: Failed to run $INSTALL_SCRIPT."
-    exit 1
-fi
-
-# Mark as installed only if everything succeeded
-log "✅ Installation script completed successfully."
-
-log "📌 Marking system as installed..."
-if ! sudo mkdir -p /etc/companionpi-wifi; then
-    log "❌ ERROR: Could not create /etc/companionpi-wifi"
-    exit 1
-fi
-
-if ! sudo touch /etc/companionpi-wifi/installed.flag; then
-    log "❌ ERROR: Could not create installed.flag"
+# Run installer with sudo
+log "🚀 Running sudo ./install.sh $*"
+if ! sudo ./"$INSTALL_SCRIPT" "$@"; then
+    log "❌ ERROR: install.sh failed"
     exit 1
 fi
 
 log ""
-log "✅ CompanionPi-wifi setup complete!"
-log "🔁 Please reboot your Raspberry Pi to apply all changes:"
+log "✅ Setup finished successfully!"
+log "🔁 Reboot your Raspberry Pi to apply changes:"
 log "    sudo reboot"
