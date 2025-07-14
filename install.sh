@@ -2,10 +2,9 @@
 # install.sh – Install CompanionPi scripts, settings, and WebApp
 
 set -e
-
 cd "$(dirname "$0")"
 
-# Function for logging messages with timestamp
+# Logging
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
@@ -17,7 +16,6 @@ FORCE_SETTINGS=false
 DEV_MODE=false
 FORCE_INSTALL=false
 
-# Parse command line arguments
 for arg in "$@"; do
   case $arg in
     --only-scripts) ONLY_SCRIPTS=true ;;
@@ -28,7 +26,7 @@ for arg in "$@"; do
   esac
 done
 
-# Variables
+# Vars
 SETTINGS_DEFAULT="settings-default.env"
 SETTINGS_LOCAL="settings.env"
 SETTINGS_TARGET="/etc/companionpi/settings.env"
@@ -36,66 +34,47 @@ INSTALL_FLAG="/etc/companionpi/installed.flag"
 BACKUP_DIR="/etc/companionpi/backups"
 DEFAULT_USER=${SUDO_USER:-$(whoami)}
 
-# Create backup directory if it doesn't exist
 sudo mkdir -p "$BACKUP_DIR"
 
-# Backup existing settings if they exist
 backup_settings() {
     if [[ -f "$SETTINGS_TARGET" ]]; then
-        local timestamp=$(date +"%Y%m%d%H%M%S")
-        local backup_file="$BACKUP_DIR/settings.env.$timestamp"
-        sudo cp "$SETTINGS_TARGET" "$backup_file"
-        log "Backed up existing settings to $backup_file"
+        local ts=$(date +"%Y%m%d%H%M%S")
+        local file="$BACKUP_DIR/settings.env.$ts"
+        sudo cp "$SETTINGS_TARGET" "$file"
+        log "🔁 Backed up existing settings to $file"
     fi
 }
 
-# Restore settings from backup if needed
-restore_settings() {
-    local latest_backup=$(ls -t "$BACKUP_DIR"/settings.env.* | head -n 1)
-    if [[ -n "$latest_backup" ]]; then
-        sudo cp "$latest_backup" "$SETTINGS_TARGET"
-        log "Restored settings from $latest_backup"
-    fi
-}
-
-# Step 1: Handle settings.env
+# Step 1: settings.env
 if [[ "$ONLY_WEBAPP" = false ]]; then
     sudo mkdir -p /etc/companionpi
     sudo chown "$DEFAULT_USER:$DEFAULT_USER" /etc/companionpi
 
     if [[ -f "$SETTINGS_TARGET" && "$FORCE_SETTINGS" = false ]]; then
-        log "📂 System settings file already exists: $SETTINGS_TARGET"
+        log "📂 Found existing settings: $SETTINGS_TARGET"
         backup_settings
-
-        log "📄 Copying current system settings to local project (settings.env)"
+        log "📄 Copying to local: $SETTINGS_LOCAL"
         sudo cp "$SETTINGS_TARGET" "$SETTINGS_LOCAL"
-        sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_LOCAL"
-
-        log "📝 Please review and update it if needed."
-        log "Press ENTER to open the editor..."
-        read
-        nano "$SETTINGS_LOCAL"
-        log "📥 Saving back to system path..."
-        sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
     else
         if [[ ! -f "$SETTINGS_LOCAL" ]]; then
-            log "⚙️ No local settings.env found – copying default..."
+            log "⚙️ No local settings found. Using defaults."
             cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
         fi
-        log "📋 No system settings found (or forced). Please review before continuing."
-        log "Press ENTER to open the editor..."
-        read
-        nano "$SETTINGS_LOCAL"
-        log "📥 Saving to system path..."
-        sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
     fi
-    sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_TARGET"
+
+    sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_LOCAL"
+    log "📝 Please review settings before continuing."
+    echo "Press ENTER to open editor..."
+    read
+    ${EDITOR:-nano} "$SETTINGS_LOCAL"
+    log "📥 Copying to system path..."
+    sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
     sudo chmod 664 "$SETTINGS_TARGET"
+    sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_TARGET"
 fi
 
 # Step 2: Install scripts
 if [[ "$ONLY_WEBAPP" = false ]]; then
-    log ""
     log "📄 Installing scripts to /usr/local/bin..."
     SCRIPT_LIST=(
         netconfig.sh
@@ -106,67 +85,69 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     )
     for script in "${SCRIPT_LIST[@]}"; do
         if [[ ! -f "$script" ]]; then
-            log "❌ ERROR: Script $script not found. Installation aborted."
+            log "❌ ERROR: Missing script $script"
             exit 1
         fi
         sudo cp "$script" "/usr/local/bin/"
         sudo chmod +x "/usr/local/bin/$script"
         sudo chown "$DEFAULT_USER:$DEFAULT_USER" "/usr/local/bin/$script"
     done
+
     log "🛠 Creating netconfig systemd service..."
-    sudo tee /etc/systemd/system/netconfig.service > /dev/null <<EOT
-[Unit]
+    echo "[Unit]
 Description=CompanionPi network configuration
 After=network.target
+
 [Service]
 ExecStart=/usr/local/bin/netconfig.sh
 Type=oneshot
 RemainAfterExit=true
+
 [Install]
-WantedBy=multi-user.target
-EOT
+WantedBy=multi-user.target" | sudo tee /etc/systemd/system/netconfig.service > /dev/null
 fi
 
 # Step 3: WebApp
 if [[ "$ONLY_SCRIPTS" = false ]]; then
-    log ""
     log "🌐 Installing Flask WebApp..."
+    if [[ ! -d WebApp ]]; then
+        log "❌ ERROR: WebApp directory not found."
+        exit 1
+    fi
     sudo mkdir -p /opt/WebApp
     sudo cp -r WebApp/* /opt/WebApp/
-    sudo chmod +x /opt/WebApp/config-web.py
+    [[ -f /opt/WebApp/config-web.py ]] && sudo chmod +x /opt/WebApp/config-web.py
     sudo chown -R "$DEFAULT_USER:$DEFAULT_USER" /opt/WebApp
+
     log "🛠 Creating config-web systemd service..."
-    sudo tee /etc/systemd/system/config-web.service > /dev/null <<EOT
-[Unit]
+    echo "[Unit]
 Description=CompanionPi Web Interface
 After=network.target
+
 [Service]
 ExecStart=/usr/bin/python3 /opt/WebApp/config-web.py
 WorkingDirectory=/opt/WebApp
 Restart=always
+
 [Install]
-WantedBy=multi-user.target
-EOT
+WantedBy=multi-user.target" | sudo tee /etc/systemd/system/config-web.service > /dev/null
 fi
 
 # Step 4: Enable services
-log ""
-log "🧩 Reloading and enabling services..."
-sudo systemctl daemon-reload
+log "🔁 Enabling services..."
 [[ "$ONLY_WEBAPP" = false ]] && sudo systemctl enable netconfig
 [[ "$ONLY_SCRIPTS" = false ]] && sudo systemctl enable config-web
+sudo systemctl daemon-reload
 
-# Step 5: Generate eth-monitor services
+# Step 5: eth-monitor services
 if [[ "$ONLY_WEBAPP" = false ]]; then
-    log ""
-    log "⚙️ Generating eth-monitor services based on settings.env..."
+    log "⚙️ Generating eth-monitor services..."
     sudo /usr/local/bin/generate-eth-monitor-services.sh
     sudo systemctl daemon-reload
 fi
 
-# Step 6: Set permissions
-log ""
-log "🔐 Fixing file permissions and ownerships..."
+# Step 6: Permissions
+log "🔐 Fixing permissions..."
 sudo chown -R "$DEFAULT_USER:$DEFAULT_USER" /etc/companionpi
 sudo chmod -R u+rw /etc/companionpi
 for f in "${SCRIPT_LIST[@]}"; do
@@ -176,11 +157,12 @@ done
 sudo chown -R "$DEFAULT_USER:$DEFAULT_USER" /opt/WebApp
 sudo chmod -R u+rw /opt/WebApp
 
-# Step 7: Create install flag
+# Step 7: Mark installed
+log "📌 Marking system as installed."
 sudo touch "$INSTALL_FLAG"
 sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$INSTALL_FLAG"
 
 log ""
 log "✅ Installation complete."
-log "🔁 Please reboot your Raspberry Pi to apply the configuration:"
+log "🔁 Please reboot your Raspberry Pi to apply configuration:"
 log "    sudo reboot"
