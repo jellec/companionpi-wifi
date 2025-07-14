@@ -3,14 +3,14 @@
 
 set -e
 
-VERSION="v0.0.32"
+VERSION="v0.0.33"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
 LOGFILE="$HOME/companionpi-setup.log"
 
 log() {
-    echo "     [$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "    setup [$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
 show_help() {

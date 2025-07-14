@@ -12,10 +12,9 @@ fi
 
 # Logging
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "    install [$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# Helptekst
 print_help() {
     cat <<EOF
 Usage: install.sh [OPTIONS]
@@ -59,14 +58,19 @@ SETTINGS_LOCAL="settings.env"
 SETTINGS_TARGET="/etc/companionpi-wifi/settings.env"
 INSTALL_FLAG="/etc/companionpi-wifi/installed.flag"
 BACKUP_DIR="/etc/companionpi-wifi/backups"
-DEFAULT_USER=${SUDO_USER:-$(whoami)}
 
 # Only use sudo for system directories!
-sudo mkdir -p "$BACKUP_DIR"
+if ! sudo test -d /etc/companionpi-wifi; then
+    sudo mkdir -p /etc/companionpi-wifi
+fi
+if ! sudo test -d "$BACKUP_DIR"; then
+    sudo mkdir -p "$BACKUP_DIR"
+fi
 
 backup_settings() {
     if [[ -f "$SETTINGS_TARGET" ]]; then
-        local ts=$(date +"%Y%m%d%H%M%S")
+        local ts
+        ts=$(date +"%Y%m%d%H%M%S")
         local file="$BACKUP_DIR/settings.env.$ts"
         sudo cp "$SETTINGS_TARGET" "$file"
         log "🔁 Backed up existing settings to $file"
@@ -75,16 +79,12 @@ backup_settings() {
 
 # Step 1: settings.env
 if [[ "$ONLY_WEBAPP" = false ]]; then
-    sudo mkdir -p /etc/companionpi-wifi
-    sudo chown "$DEFAULT_USER:$DEFAULT_USER" /etc/companionpi-wifi
-
     # Determine which settings to use
     if [[ -f "$SETTINGS_TARGET" && "$FORCE_SETTINGS" = false ]]; then
         log "📂 Found existing settings: $SETTINGS_TARGET"
         backup_settings
         log "📄 Copying to local: $SETTINGS_LOCAL"
-        sudo cp "$SETTINGS_TARGET" "$SETTINGS_LOCAL"
-        sudo chown "$USER:$USER" "$SETTINGS_LOCAL"
+        cp "$SETTINGS_TARGET" "$SETTINGS_LOCAL"
     else
         log "⚙️ Using default settings."
         cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
@@ -111,7 +111,7 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     log "📥 Copying to system path..."
     sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
     sudo chmod 664 "$SETTINGS_TARGET"
-    sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_TARGET"
+    sudo chown root:root "$SETTINGS_TARGET"
 fi
 
 # Step 2: Install scripts
