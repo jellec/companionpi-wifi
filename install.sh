@@ -88,7 +88,7 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     if [[ -t 0 ]]; then
         echo "Press ENTER to open editor..."
         read
-        ${EDITOR:-nano} "$SETTINGS_LOCAL"
+        sudo -u "$DEFAULT_USER" env TERM=$TERM ${EDITOR:-nano} "$SETTINGS_LOCAL"
     else
         log "⚠️  Non-interactive shell – skipping manual edit of settings.env"
     fi
