@@ -90,6 +90,11 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
         echo "🔧 Druk op ENTER om de editor te openen..."
         read -r
         exec < /dev/tty  # Zorg dat stdin juist is voor nano
+        # Set proper terminal environment for nano to prevent strange characters
+        [[ -z "$LANG" || ! "$LANG" =~ UTF-8 ]] && export LANG=C.UTF-8
+        [[ -z "$LC_ALL" || ! "$LC_ALL" =~ UTF-8 ]] && export LC_ALL=C.UTF-8
+        # Ensure TERM is set to a value that supports proper character display
+        [[ -z "$TERM" || "$TERM" == "dumb" ]] && export TERM=xterm
         ${EDITOR:-nano} "$SETTINGS_LOCAL"
     else
         log "⚠️  Skipping manual edit (non-interactive shell or --no-edit flag)"
