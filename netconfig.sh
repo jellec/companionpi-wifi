@@ -3,7 +3,7 @@
 
 set -e
 
-SETTINGS_FILE="/etc/companionpi/settings.env"
+SETTINGS_FILE="/etc/companionpi-wifi/settings.env"
 
 # Check if settings file exists
 if [ ! -f "$SETTINGS_FILE" ]; then

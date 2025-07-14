@@ -7,7 +7,7 @@ VERSION="v0.0.7"
 REPO_URL="https://github.com/jellec/companionpi-wifi"
 REPO_DIR="/tmp/companionpi-wifi"
 INSTALL_SCRIPT="install.sh"
-LOGFILE="/var/log/companionpi-setup.log"
+LOGFILE="/var/log/companionpi-wifi-setup.log"
 
 # Function for logging messages with timestamp
 log() {
@@ -15,17 +15,17 @@ log() {
 }
 
 # Start logging
-log "📦 CompanionPi Setup – version $VERSION"
+log "📦 CompanionPi-wifi Setup – version $VERSION"
 log "🌐 Repo: $REPO_URL"
 log "📁 Temporary directory: $REPO_DIR"
 log "📝 Logfile: $LOGFILE"
 
 exec > >(tee -a "$LOGFILE") 2>&1
 
-# Check if CompanionPi is already installed
-if [[ -f "/etc/companionpi/installed.flag" ]]; then
-    log "✅ CompanionPi already appears to be installed. Exiting setup."
-    log "📝 To force reinstall, delete /etc/companionpi/installed.flag and rerun."
+# Check if CompanionPi-wifi is already installed
+if [[ -f "/etc/companionpi-wifi/installed.flag" ]]; then
+    log "✅ CompanionPi-wifi already appears to be installed. Exiting setup."
+    log "📝 To force reinstall, delete /etc/companionpi-wifi/installed.flag and rerun."
     exit 0
 fi
 
@@ -54,7 +54,7 @@ log "🧹 Cleaning up previous clone (if any)..."
 rm -rf "$REPO_DIR"
 
 # Clone the latest repository
-log "⬇️ Cloning latest CompanionPi Wifi repo..."
+log "⬇️ Cloning latest CompanionPi-wifi repo..."
 if ! git clone "$REPO_URL" "$REPO_DIR"; then
     log "❌ ERROR: Git clone failed – check internet connection or repo URL."
     exit 1
@@ -85,17 +85,17 @@ fi
 log "✅ Installation script completed successfully."
 
 log "📌 Marking system as installed..."
-if ! sudo mkdir -p /etc/companionpi; then
-    log "❌ ERROR: Could not create /etc/companionpi"
+if ! sudo mkdir -p /etc/companionpi-wifi; then
+    log "❌ ERROR: Could not create /etc/companionpi-wifi"
     exit 1
 fi
 
-if ! sudo touch /etc/companionpi/installed.flag; then
+if ! sudo touch /etc/companionpi-wifi/installed.flag; then
     log "❌ ERROR: Could not create installed.flag"
     exit 1
 fi
 
 log ""
-log "✅ CompanionPi setup complete!"
+log "✅ CompanionPi-wifi setup complete!"
 log "🔁 Please reboot your Raspberry Pi to apply all changes:"
 log "    sudo reboot"

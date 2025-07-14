@@ -1,5 +1,5 @@
 #!/bin/bash
-# install.sh – Install CompanionPi scripts, settings, and WebApp
+# install.sh – Install CompanionPi-wifi scripts, settings, and WebApp
 
 set -e
 cd "$(dirname "$0")"
@@ -29,9 +29,9 @@ done
 # Vars
 SETTINGS_DEFAULT="settings-default.env"
 SETTINGS_LOCAL="settings.env"
-SETTINGS_TARGET="/etc/companionpi/settings.env"
-INSTALL_FLAG="/etc/companionpi/installed.flag"
-BACKUP_DIR="/etc/companionpi/backups"
+SETTINGS_TARGET="/etc/companionpi-wifi/settings.env"
+INSTALL_FLAG="/etc/companionpi-wifi/installed.flag"
+BACKUP_DIR="/etc/companionpi-wifi/backups"
 DEFAULT_USER=${SUDO_USER:-$(whoami)}
 
 sudo mkdir -p "$BACKUP_DIR"
@@ -47,8 +47,8 @@ backup_settings() {
 
 # Step 1: settings.env
 if [[ "$ONLY_WEBAPP" = false ]]; then
-    sudo mkdir -p /etc/companionpi
-    sudo chown "$DEFAULT_USER:$DEFAULT_USER" /etc/companionpi
+    sudo mkdir -p /etc/companionpi-wifi
+    sudo chown "$DEFAULT_USER:$DEFAULT_USER" /etc/companionpi-wifi
 
     if [[ -f "$SETTINGS_TARGET" && "$FORCE_SETTINGS" = false ]]; then
         log "📂 Found existing settings: $SETTINGS_TARGET"
@@ -95,7 +95,7 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
 
     log "🛠 Creating netconfig systemd service..."
     echo "[Unit]
-Description=CompanionPi network configuration
+Description=companionpi-wifi network configuration
 After=network.target
 
 [Service]
@@ -121,7 +121,7 @@ if [[ "$ONLY_SCRIPTS" = false ]]; then
 
     log "🛠 Creating config-web systemd service..."
     echo "[Unit]
-Description=CompanionPi Web Interface
+Description=companionpi-wifi Web Interface
 After=network.target
 
 [Service]
@@ -148,8 +148,8 @@ fi
 
 # Step 6: Permissions
 log "🔐 Fixing permissions..."
-sudo chown -R "$DEFAULT_USER:$DEFAULT_USER" /etc/companionpi
-sudo chmod -R u+rw /etc/companionpi
+sudo chown -R "$DEFAULT_USER:$DEFAULT_USER" /etc/companionpi-wifi
+sudo chmod -R u+rw /etc/companionpi-wifi
 for f in "${SCRIPT_LIST[@]}"; do
     sudo chown "$DEFAULT_USER:$DEFAULT_USER" "/usr/local/bin/$f"
     sudo chmod u+rw "/usr/local/bin/$f"
