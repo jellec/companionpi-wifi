@@ -100,7 +100,7 @@ chmod +x "$INSTALL_SCRIPT"
 sudo chown -R $USER:$USER /tmp/companionpi-wifi
 
 # Return to home directory to avoid accidental operations in the temporary repo directory
-cd "$HOME"
+cd
 
 log ""
 log "✅ Setup finished successfully!"
