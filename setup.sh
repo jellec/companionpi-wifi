@@ -76,7 +76,7 @@ if [[ -d "$REPO_DIR/.git" ]]; then
     git fetch origin
     git reset --hard origin/main
 else
-    rm -rf "$REPO_DIR"
+    sudo rm -rf "$REPO_DIR"
     git clone --depth 1 "$REPO_URL" "$REPO_DIR"
 fi
 
