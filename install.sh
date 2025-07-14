@@ -71,29 +71,30 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     sudo mkdir -p /etc/companionpi-wifi
     sudo chown "$DEFAULT_USER:$DEFAULT_USER" /etc/companionpi-wifi
 
+    # Determine which settings to use
     if [[ -f "$SETTINGS_TARGET" && "$FORCE_SETTINGS" = false ]]; then
         log "📂 Found existing settings: $SETTINGS_TARGET"
         backup_settings
         log "📄 Copying to local: $SETTINGS_LOCAL"
         sudo cp "$SETTINGS_TARGET" "$SETTINGS_LOCAL"
     else
-        if [[ ! -f "$SETTINGS_LOCAL" ]]; then
-            log "⚙️ No local settings found. Using defaults."
-            cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
-        fi
+        log "⚙️ Using default settings."
+        cp "$SETTINGS_DEFAULT" "$SETTINGS_LOCAL"
     fi
 
     sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_LOCAL"
     log "📝 Please review settings before continuing."
 
-    if [[ "$NO_EDIT" != true && -t 0 && -n "$PS1" ]]; then
-        echo "🔧 Druk op ENTER om de editor te openen..."
+    # Always open nano for review
+    if [[ -t 0 && -n "$PS1" ]]; then
+        echo "🔧 Press ENTER to edit settings in nano..."
         read -r
-        exec < /dev/tty  # Zorg dat stdin juist is voor nano
+        exec < /dev/tty  # Ensure correct stdin for nano
         ${EDITOR:-nano} "$SETTINGS_LOCAL"
     else
-        log "⚠️  Skipping manual edit (non-interactive shell or --no-edit flag)"
+        log "⚠️  Skipping manual edit (non-interactive shell)"
     fi
+
     log "📥 Copying to system path..."
     sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
     sudo chmod 664 "$SETTINGS_TARGET"
