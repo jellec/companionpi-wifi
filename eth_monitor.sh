@@ -1,22 +1,37 @@
 #!/bin/bash
 # eth_monitor.sh – Monitor Ethernet link status and retry DHCP fallback
 
+set -e
+
 INTERFACE="$1"
 AUTO_CONN="${INTERFACE}-auto"
 FIX_CONN="${INTERFACE}-fix"
 DHCP_TIMEOUT=30
 DISCONNECT_TIMEOUT=10
-LOG_FILE="/var/log/network_monitor_${INTERFACE}.log"
+LOG_DIR="/var/log/companionpi-wifi"
+LOG_FILE="${LOG_DIR}/eth_monitor_${INTERFACE}.log"
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Check if nmcli is available
+if ! command -v nmcli &>/dev/null; then
+    echo "❌ nmcli not found – aborting"
+    exit 1
+fi
 
 log_message() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') $1" >> "$LOG_FILE"
+    local msg="$1"
+    local timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+    echo "$timestamp $msg" >> "$LOG_FILE"
+    logger -t "eth_monitor[$INTERFACE]" "$msg"
 }
 
 check_ip() {
     ip addr show "$INTERFACE" | grep -q 'inet '
 }
 
-log_message "🛠 Monitor started for $INTERFACE"
+log_message "🛠️ Monitor started for $INTERFACE"
 sleep 30  # Let system settle (e.g. initial DHCP attempts)
 
 while true; do
