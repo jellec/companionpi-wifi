@@ -85,7 +85,13 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     sudo chown "$DEFAULT_USER:$DEFAULT_USER" "$SETTINGS_LOCAL"
     log "📝 Please review and edit your network settings."
 
-    # Open settings.env in nano (or fallback editor)
+    # Pauze + ENTER prompt vóór editor
+    echo ""
+    echo "📄 Settings file: $SETTINGS_LOCAL"
+    echo "Press ENTER to open the editor..."
+    read
+
+    # Open settings.env in nano (of fallback editor)
     if [ -n "$EDITOR" ] && command -v "$EDITOR" >/dev/null 2>&1; then
         "$EDITOR" "$SETTINGS_LOCAL"
     elif command -v nano >/dev/null 2>&1; then
