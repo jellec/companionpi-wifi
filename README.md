@@ -24,6 +24,7 @@ Make sure you have internet access via Ethernet when running this.
 Use this to always fetch the latest code from GitHub and install:
 
 ```bash
+rm -rf /tmp/companionpi-wifi && \
 git clone --depth 1 https://github.com/jellec/companionpi-wifi /tmp/companionpi-wifi && \
 cd /tmp/companionpi-wifi && \
 sudo bash setup.sh --force-install --force-settings
