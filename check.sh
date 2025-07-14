@@ -3,6 +3,8 @@ set -e
 
 SETTINGS_FILE="/etc/companionpi-wifi/settings.env"
 
+echo ""
+echo ""
 echo "=== CompanionPi-WiFi System Check ==="
 echo ""
 
@@ -101,3 +103,5 @@ ss -tuln | grep -E ':53|:67|:8001' || echo "No relevant ports are open."
 
 echo ""
 echo "=== System Check Complete ==="
+echo ""
+echo ""
