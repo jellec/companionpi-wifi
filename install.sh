@@ -96,17 +96,16 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
     echo "Press ENTER to open the editor..."
     read
 
-    # Open settings.env in nano (or fallback editor)
-    if [ -n "$EDITOR" ] && command -v "$EDITOR" >/dev/null 2>&1; then
-        "$EDITOR" "$SETTINGS_LOCAL"
-    elif command -v nano >/dev/null 2>&1; then
+    # Open settings.env in nano as the current user (no sudo)
+    if command -v nano >/dev/null 2>&1; then
         nano "$SETTINGS_LOCAL"
-    elif command -v vi >/dev/null 2>&1; then
-        vi "$SETTINGS_LOCAL"
     else
-        log "❌ No editor found. Please install nano or vi, or set \$EDITOR."
+        log "❌ nano editor not found. Please install nano."
         exit 1
     fi
+
+    ./edit-settings.sh
+    
 
     log "📥 Copying to system path..."
     sudo cp "$SETTINGS_LOCAL" "$SETTINGS_TARGET"
