@@ -105,7 +105,7 @@ if [[ "$ONLY_WEBAPP" = false ]]; then
         exit 1
     fi
 
-    chmod -x ./edit_settings.sh
+    sudo chmod +x ./edit_settings.sh
     ./edit_settings.sh
 
 
