@@ -97,7 +97,7 @@ if ! sudo ./"$INSTALL_SCRIPT" "$@"; then
     exit 1
 fi
 
-sudo chown -R $USER:$USER /tmp/companionpi-wifi
+# sudo chown -R $USER:$USER /tmp/companionpi-wifi
 
 cd  "$HOME"
 
