@@ -5,33 +5,83 @@ import os
 
 app = Flask(__name__)
 
+SETTINGS_FILE = "/etc/companionpi-wifi/settings.env"
 WIFI_IFACE = 'wlan0'
 WIFI_AP_CONN = f"{WIFI_IFACE}-ap"
 WIFI_DNSMASQ_CONF = f"/etc/dnsmasq.d/{WIFI_IFACE}_ap.conf"
 
-def get_eth0_settings():
+def run_cmd(cmd):
     try:
-        cmd = "nmcli -f GENERAL.CONNECTION,IP4.ADDRESS,IP4.GATEWAY device show eth0"
-        output = subprocess.check_output(cmd, shell=True, text=True).strip()
-        return output
-    except subprocess.CalledProcessError as e:
-        return {'error': f'Error: {e.returncode}. Unable to fetch eth0 details.'}
-
-def get_eth0_fix_settings():
-    try:
-        cmd = "nmcli -f IPV4.ADDRESSES connection show eth0-fix"
-        output = subprocess.check_output(cmd, shell=True, text=True).strip()
-        return {'ipv4_address': output.split()[1]}
+        return subprocess.check_output(cmd, shell=True, text=True).strip()
     except subprocess.CalledProcessError:
-        return {'ipv4_address': 'Unavailable'}
+        return None
+
+def get_enabled_eth_ifaces():
+    if not os.path.exists(SETTINGS_FILE):
+        return []
+    enabled = []
+    with open(SETTINGS_FILE) as f:
+        for line in f:
+            if line.strip().startswith("ETH") and "_ENABLED=true" in line:
+                prefix = line.split("_")[0]
+                iface = prefix.lower()
+                if os.path.exists(f"/sys/class/net/{iface}"):
+                    enabled.append(iface)
+    return sorted(enabled)
+
+def get_eth_connection_details(iface):
+    results = {}
+    for mode in ['auto', 'fix']:
+        conn_name = f"{iface}-{mode}"
+        result = {
+            'name': conn_name,
+            'address': 'Unavailable',
+            'method': 'Unavailable',
+            'gateway': 'Unavailable',
+            'active': False
+        }
+        active = run_cmd("nmcli -t -f NAME connection show --active")
+        if active and conn_name in active:
+            result['active'] = True
+        info = run_cmd(f"nmcli -g IPV4.ADDRESSES,IPV4.METHOD,IPV4.GATEWAY connection show '{conn_name}'")
+        if info:
+            fields = info.splitlines()
+            if len(fields) >= 1:
+                result['address'] = fields[0]
+            if len(fields) >= 2:
+                result['method'] = fields[1]
+            if len(fields) >= 3:
+                result['gateway'] = fields[2]
+        results[mode] = result
+    return results
+
+def get_eth_mode_from_settings(iface):
+    key = f"{iface.upper()}_MODE"
+    if not os.path.exists(SETTINGS_FILE):
+        return 'auto'
+    with open(SETTINGS_FILE) as f:
+        for line in f:
+            if line.strip().startswith(key + "="):
+                return line.strip().split("=")[1]
+    return 'auto'
+
+def change_eth_fix_ip(iface, new_ip):
+    conn_name = f"{iface}-fix"
+    try:
+        subprocess.run(f"sudo nmcli connection modify '{conn_name}' ipv4.addresses {new_ip}", shell=True, check=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
 def get_wifi_ap_settings():
-    try:
-        cmd = f"nmcli -f IP4.ADDRESS,802-11-wireless.ssid connection show '{WIFI_AP_CONN}'"
-        output = subprocess.check_output(cmd, shell=True, text=True).strip()
-        return output
-    except subprocess.CalledProcessError:
-        return {'error': f"Connection '{WIFI_AP_CONN}' not found or not active."}
+    output = run_cmd(f"nmcli -f IP4.ADDRESS,802-11-wireless.ssid connection show '{WIFI_AP_CONN}'")
+    if not output:
+        return {'ssid': 'Unavailable', 'ip': 'Unavailable'}
+    lines = output.splitlines()
+    return {
+        'ip': lines[0].strip() if len(lines) > 0 else 'Unavailable',
+        'ssid': lines[1].strip() if len(lines) > 1 else 'Unavailable'
+    }
 
 def get_dhcp_range():
     dhcp_range = {"start": None, "end": None}
@@ -45,14 +95,6 @@ def get_dhcp_range():
     except FileNotFoundError:
         pass
     return dhcp_range
-
-def change_eth0_ip(new_ip):
-    try:
-        cmd = f"sudo nmcli connection modify 'eth0-fix' ipv4.addresses {new_ip}"
-        subprocess.run(cmd, shell=True, check=True)
-        return True
-    except subprocess.CalledProcessError:
-        return False
 
 def change_wifi_ap_settings(new_ssid, new_wpa_passphrase, new_ip):
     try:
@@ -78,47 +120,30 @@ def write_dhcp_settings(start, end):
 
 @app.route('/')
 def index():
-    eth0_settings = get_eth0_settings()
-    eth0_fix_settings = get_eth0_fix_settings()
-    wifi_ap_settings = get_wifi_ap_settings()
-    wifi_dhcp_range = get_dhcp_range()
+    interfaces = []
+    for iface in get_enabled_eth_ifaces():
+        interfaces.append({
+            'iface': iface,
+            'mode': get_eth_mode_from_settings(iface),
+            'connections': get_eth_connection_details(iface)
+        })
 
-    path = '/opt/companion-module-dev'
-    items = []
-    path_warning = None
-
-    if os.path.exists(path):
-        try:
-            for item in os.listdir(path):
-                item_path = os.path.join(path, item)
-                item_type = 'Directory' if os.path.isdir(item_path) else 'File'
-                items.append({'name': item, 'type': item_type})
-        except Exception as e:
-            path_warning = f"⚠️ Error reading {path}: {e}"
-    else:
-        path_warning = f"ℹ️ Directory '{path}' not found. This is expected in Companion v4 and newer."
+    wifi_ap = get_wifi_ap_settings()
+    dhcp_range = get_dhcp_range()
 
     return render_template(
         'index.html',
-        eth0_settings=eth0_settings,
-        eth0_fix_settings=eth0_fix_settings,
-        eth0_fix_ip=eth0_fix_settings.get('ipv4_address'),
-        wifi_ap_settings=wifi_ap_settings,
-        wifi_ap_settings_ssid=wifi_ap_settings.split()[1] if isinstance(wifi_ap_settings, str) else None,
-        wifi_ap_settings_ip=wifi_ap_settings.split()[0] if isinstance(wifi_ap_settings, str) else None,
-        wifi_ap_dhcp_range=wifi_dhcp_range,
-        wifi_ap_dhcp_start=wifi_dhcp_range.get('start'),
-        wifi_ap_dhcp_end=wifi_dhcp_range.get('end'),
-        items=items,
-        path=path,
-        path_warning=path_warning
+        interfaces=interfaces,
+        wifi_ap=wifi_ap,
+        dhcp_range=dhcp_range
     )
 
-@app.route('/change_eth0_ip', methods=['POST'])
-def change_eth0_ip_route():
+@app.route('/change_eth_ip', methods=['POST'])
+def change_eth_ip_route():
+    iface = request.form['iface']
     new_ip = request.form['new_ip']
-    success = change_eth0_ip(new_ip)
-    message = f"Success! Eth0-fix IP address changed to {new_ip}." if success else "Failed to change Eth0-fix IP address."
+    success = change_eth_fix_ip(iface, new_ip)
+    message = f"✅ {iface}-fix IP updated to {new_ip}" if success else f"❌ Failed to update {iface}-fix IP"
     return render_template('confirmation.html', message=message, redirect_url=url_for('index'))
 
 @app.route('/change_wifi_ap_settings', methods=['POST'])
@@ -131,7 +156,7 @@ def change_wifi_ap_settings_route():
 
     wifi_ok = change_wifi_ap_settings(new_ssid, new_wpa_passphrase, new_wifi_ip)
     dhcp_ok = write_dhcp_settings(new_dhcp_start, new_dhcp_end)
-    message = "✅ Parameters successfully updated." if wifi_ok and dhcp_ok else f"❌ Update failed. WiFi OK: {wifi_ok}, DHCP OK: {dhcp_ok}"
+    message = "✅ Parameters updated." if wifi_ok and dhcp_ok else f"❌ Failed. WiFi OK: {wifi_ok}, DHCP OK: {dhcp_ok}"
     return render_template('confirmation.html', message=message, redirect_url=url_for('index'))
 
 @app.route('/restart_companion', methods=['POST'])
@@ -140,7 +165,7 @@ def restart_companion():
         subprocess.run(['sudo', 'systemctl', 'restart', 'companion'], check=True)
         return redirect(url_for('index'))
     except subprocess.CalledProcessError as e:
-        return f"Failed to restart companion service: {e}"
+        return f"Failed to restart companion: {e}"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8001)
